@@ -1,10 +1,9 @@
 package io.github.senjar.courseservice.service.impl;
 
-import io.github.senjar.courseservice.client.PaymentClient;
-import io.github.senjar.courseservice.exception.AccessDeniedException;
-import io.github.senjar.courseservice.exception.EntityNotFoundException;
 import io.github.senjar.courseservice.dto.enrollment.CreateEnrollmentDto;
 import io.github.senjar.courseservice.dto.enrollment.EnrollmentDto;
+import io.github.senjar.courseservice.exception.AccessDeniedException;
+import io.github.senjar.courseservice.exception.EntityNotFoundException;
 import io.github.senjar.courseservice.mapper.EnrollmentMapper;
 import io.github.senjar.courseservice.model.Enrollment;
 import io.github.senjar.courseservice.repository.EnrollmentRepository;
@@ -19,15 +18,9 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
     private final EnrollmentRepository enrollmentRepository;
     private final EnrollmentMapper enrollmentMapper;
-    private final PaymentClient paymentClient;
 
     @Override
     public EnrollmentDto createEnrollment(CreateEnrollmentDto createEnrollmentDto, Long userId) {
-        if (!paymentClient.getSubscriptionStatus(userId).isActive()) {
-            throw new AccessDeniedException("You can't create enrollment "
-                    + "without active subscription");
-        }
-
         Enrollment enrollment = enrollmentMapper.toEntity(createEnrollmentDto);
         enrollment.setStudentId(userId);
         Enrollment savedEnrollment = enrollmentRepository.save(enrollment);

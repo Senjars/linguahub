@@ -14,5 +14,5 @@ public interface GroupMapper {
 
     GroupDto toDto(Group group);
 
-    Group updateGroup(@MappingTarget UpdateGroupDto updateGroupDto, Group group);
+    void updateGroup(UpdateGroupDto updateGroupDto, @MappingTarget Group group);
 }

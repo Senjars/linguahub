@@ -17,5 +17,4 @@ public interface BookingService {
 
     void cancelBooking(Long bookingId, Long userId);
 
-    void confirmBooking(Long bookingId);
 }

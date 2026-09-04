@@ -1,0 +1,119 @@
+name: linguahub
+
+services:
+  postgres-users:
+    image: postgres:16-alpine
+    container_name: linguahub-postgres-users
+    environment:
+      POSTGRES_DB: ${POSTGRES_USERS_DB}
+      POSTGRES_USER: ${POSTGRES_USERS_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_USERS_PASSWORD}
+    ports:
+      - "${POSTGRES_USERS_PORT}:5432"
+    volumes:
+      - postgres-users-data:/var/lib/postgresql/data
+    networks:
+      - linguahub-network
+
+  postgres-courses:
+    image: postgres:16-alpine
+    container_name: linguahub-postgres-courses
+    environment:
+      POSTGRES_DB: ${POSTGRES_COURSES_DB}
+      POSTGRES_USER: ${POSTGRES_COURSES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_COURSES_PASSWORD}
+    ports:
+      - "${POSTGRES_COURSES_PORT}:5432"
+    volumes:
+      - postgres-courses-data:/var/lib/postgresql/data
+    networks:
+      - linguahub-network
+
+  postgres-payments:
+    image: postgres:16-alpine
+    container_name: linguahub-postgres-payments
+    environment:
+      POSTGRES_DB: ${POSTGRES_PAYMENTS_DB}
+      POSTGRES_USER: ${POSTGRES_PAYMENTS_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PAYMENTS_PASSWORD}
+    ports:
+      - "${POSTGRES_PAYMENTS_PORT}:5432"
+    volumes:
+      - postgres-payments-data:/var/lib/postgresql/data
+    networks:
+      - linguahub-network
+
+  discovery-server:
+    image: discovery-server:latest
+    container_name: linguahub-discovery-server
+    build:
+      context: ./discovery-server
+    ports:
+      - "${DISCOVERY_SERVER_PORT}:8761"
+    networks:
+      - linguahub-network
+
+  user-service:
+    image: user-service:latest
+    container_name: linguahub-user-service
+    build:
+      context: ./user-service
+    ports:
+      - "${USER_SERVICE_PORT}:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-users:5432/${POSTGRES_USERS_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USERS_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_USERS_PASSWORD}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    depends_on:
+      - postgres-users
+      - discovery-server
+    networks:
+      - linguahub-network
+
+  course-service:
+    image: course-service:latest
+    container_name: linguahub-course-service
+    build:
+      context: ./course-service
+    ports:
+      - "${COURSE_SERVICE_PORT}:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-courses:5432/${POSTGRES_COURSES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_COURSES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_COURSES_PASSWORD}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    depends_on:
+      - postgres-courses
+      - discovery-server
+    networks:
+      - linguahub-network
+
+  payment-service:
+    image: payment-service:latest
+    container_name: linguahub-payment-service
+    build:
+      context: ./payment-service
+    ports:
+      - "${PAYMENT_SERVICE_PORT}:8086"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-payments:5432/${POSTGRES_PAYMENTS_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_PAYMENTS_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PAYMENTS_PASSWORD}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+      STRIPE_API_KEY: ${STRIPE_API_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+    depends_on:
+      - postgres-payments
+      - discovery-server
+    networks:
+      - linguahub-network
+
+networks:
+  linguahub-network:
+    driver: bridge
+
+volumes:
+  postgres-users-data:
+  postgres-courses-data:
+  postgres-payments-data:

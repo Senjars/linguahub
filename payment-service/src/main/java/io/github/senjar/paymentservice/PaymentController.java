@@ -1,6 +1,5 @@
-package io.github.senjar.courseservice.controller;
+package io.github.senjar.paymentservice;
 
-import io.github.senjar.courseservice.client.PaymentClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -8,13 +7,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/api/v1/bookings")
-public class BookingController {
-
-    private final PaymentClient paymentClient;
+@RequestMapping("/api/v1/payments")
+public class PaymentController {
 
     @GetMapping("/test")
     public String test() {
-        return paymentClient.testPaymentService();
+        return "Payment service is working!";
     }
 }

@@ -11,6 +11,7 @@ import io.github.senjar.courseservice.service.BookingService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +21,7 @@ public class BookingServiceImpl implements BookingService {
     private final BookingMapper bookingMapper;
 
     @Override
+    @Transactional
     public BookingResponseDto createBooking(BookingRequestDto bookingRequestDto, Long userId) {
         Booking booking = bookingMapper.toEntity(bookingRequestDto);
         booking.setStudentId(userId);
@@ -29,14 +31,15 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public BookingResponseDto findBooking(Long bookingId, Long userId) {
-        Booking booking = bookingRepository.findByIdAndStudentId(bookingId, userId)
-                .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
+        Booking booking = getBookingByIdAndStudentId(bookingId, userId);
 
         return bookingMapper.toDto(booking);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<BookingResponseDto> getBookingsForStudent(Long userId) {
         return bookingRepository.findAllByStudentId(userId).stream()
                 .map(bookingMapper::toDto)
@@ -44,10 +47,10 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @Transactional
     public BookingResponseDto updateBooking(UpdateBookingDto updateBookingDto, Long bookingId,
                                             Long userId) {
-        Booking booking = bookingRepository.findByIdAndStudentId(bookingId, userId)
-                .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
+        Booking booking = getBookingByIdAndStudentId(bookingId, userId);
 
         bookingMapper.updateBooking(booking, updateBookingDto);
         Booking updatedBooking = bookingRepository.save(booking);
@@ -56,15 +59,15 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @Transactional
     public void cancelBooking(Long bookingId, Long userId) {
-        Booking booking = bookingRepository.findByIdAndStudentId(bookingId, userId)
-                .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
+        Booking booking = getBookingByIdAndStudentId(bookingId, userId);
 
         bookingRepository.delete(booking);
     }
 
-    @Override
-    public void confirmBooking(Long bookingId) {
-
+    private Booking getBookingByIdAndStudentId(Long bookingId, Long userId) {
+        return bookingRepository.findByIdAndStudentId(bookingId, userId)
+                .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
     }
 }

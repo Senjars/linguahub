@@ -32,8 +32,8 @@ public class GroupServiceImpl implements GroupService {
         Group group = groupRepository.findById(groupId).orElseThrow(
                 () -> new EntityNotFoundException(""));
 
-        Group updatedGroup = groupMapper.updateGroup(updateGroupDto, group);
-        Group savedGroup = groupRepository.save(updatedGroup);
+        groupMapper.updateGroup(updateGroupDto, group);
+        Group savedGroup = groupRepository.save(group);
 
         return groupMapper.toDto(savedGroup);
     }

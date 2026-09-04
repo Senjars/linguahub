@@ -6,14 +6,13 @@ import io.github.senjar.courseservice.dto.course.UpdateCourseDto;
 import io.github.senjar.courseservice.model.course.Course;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;
-import org.springframework.data.jpa.repository.JpaRepository;
 
 @Mapper(componentModel = "spring")
-public interface CourseMapper extends JpaRepository<Course, Long> {
+public interface CourseMapper {
 
     Course toEntity(CreateCourseDto createCourseDto);
 
     CourseDto toDto(Course course);
 
-    Course updateCourse(@MappingTarget UpdateCourseDto updateCourseDto, Course course);
+    void updateCourse(UpdateCourseDto updateCourseDto, @MappingTarget Course course);
 }

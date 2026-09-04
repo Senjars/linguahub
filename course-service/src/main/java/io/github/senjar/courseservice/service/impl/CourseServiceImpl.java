@@ -46,8 +46,8 @@ public class CourseServiceImpl implements CourseService {
         Course course = courseRepository.findById(courseId).orElseThrow(
                 () -> new EntityNotFoundException(""));
 
-        Course updateCourse = courseMapper.updateCourse(updateCourseDto, course);
-        Course savedCourse = courseRepository.save(updateCourse);
+        courseMapper.updateCourse(updateCourseDto, course);
+        Course savedCourse = courseRepository.save(course);
 
         return courseMapper.toDto(savedCourse);
     }
