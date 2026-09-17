@@ -1,0 +1,21 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: payment-service
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+eureka:
+  client:
+    service-url:
+        defaultZone: http://localhost:8761/eureka
+
+stripe:
+  secret-key: ${STRIPE_SECRET_KEY}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET}
+  app-url: http://localhost:8083
+  success-url: http://localhost:8083/payment/success
+  cancel-url: http://localhost:8083/payment/cancel

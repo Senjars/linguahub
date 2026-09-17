@@ -15,17 +15,17 @@ services:
     networks:
       - linguahub-network
 
-  postgres-courses:
+  postgres-bookings:
     image: postgres:16-alpine
-    container_name: linguahub-postgres-courses
+    container_name: linguahub-postgres-bookings
     environment:
-      POSTGRES_DB: ${POSTGRES_COURSES_DB}
-      POSTGRES_USER: ${POSTGRES_COURSES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_COURSES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_BOOKINGS_DB}
+      POSTGRES_USER: ${POSTGRES_BOOKINGS_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_BOOKINGS_PASSWORD}
     ports:
-      - "${POSTGRES_COURSES_PORT}:5432"
+      - "${POSTGRES_BOOKINGS_PORT}:5432"
     volumes:
-      - postgres-courses-data:/var/lib/postgresql/data
+      - postgres-bookings-data:/var/lib/postgresql/data
     networks:
       - linguahub-network
 
@@ -53,6 +53,23 @@ services:
     networks:
       - linguahub-network
 
+  api-gateway:
+    image: api-gateway:latest
+    container_name: linguahub-api-gateway
+    build:
+      context: ./api-gateway
+    ports:
+      - "${API_GATEWAY_PORT}:8080"
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    depends_on:
+      - discovery-server
+      - user-service
+      - booking-service
+      - payment-service
+    networks:
+      - linguahub-network
+
   user-service:
     image: user-service:latest
     container_name: linguahub-user-service
@@ -71,20 +88,20 @@ services:
     networks:
       - linguahub-network
 
-  course-service:
-    image: course-service:latest
-    container_name: linguahub-course-service
+  booking-service:
+    image: booking-service:latest
+    container_name: linguahub-booking-service
     build:
       context: ./booking-service
     ports:
-      - "${COURSE_SERVICE_PORT}:8082"
+      - "${BOOKING_SERVICE_PORT}:8082"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-courses:5432/${POSTGRES_COURSES_DB}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_COURSES_USER}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_COURSES_PASSWORD}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-bookings:5432/${POSTGRES_BOOKINGS_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_BOOKINGS_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_BOOKINGS_PASSWORD}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
     depends_on:
-      - postgres-courses
+      - postgres-bookings
       - discovery-server
     networks:
       - linguahub-network
@@ -115,5 +132,5 @@ networks:
 
 volumes:
   postgres-users-data:
-  postgres-courses-data:
+  postgres-bookings-data:
   postgres-payments-data:
