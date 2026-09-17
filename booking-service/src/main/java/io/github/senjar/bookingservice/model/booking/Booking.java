@@ -15,6 +15,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 @Getter
@@ -30,16 +31,20 @@ public class Booking {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "teacher_id", nullable = false)
-    private Long teacherId;
+    @Column(name = "slot_id", nullable = false)
+    private Long slotId;
 
     @Column(name = "student_id", nullable = false)
     private Long studentId;
 
-    @Column(name = "lesson_time", nullable = false)
-    private LocalDateTime lessonTime;
-
     @Enumerated(EnumType.STRING)
     private Status status;
+
+    @Column(name = "payments")
+    private Long paymentId;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
 }

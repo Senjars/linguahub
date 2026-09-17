@@ -75,7 +75,7 @@ services:
     image: course-service:latest
     container_name: linguahub-course-service
     build:
-      context: ./course-service
+      context: ./booking-service
     ports:
       - "${COURSE_SERVICE_PORT}:8082"
     environment:
@@ -95,13 +95,13 @@ services:
     build:
       context: ./payment-service
     ports:
-      - "${PAYMENT_SERVICE_PORT}:8086"
+      - "${PAYMENT_SERVICE_PORT}:8083"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-payments:5432/${POSTGRES_PAYMENTS_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_PAYMENTS_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PAYMENTS_PASSWORD}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
-      STRIPE_API_KEY: ${STRIPE_API_KEY}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
     depends_on:
       - postgres-payments
