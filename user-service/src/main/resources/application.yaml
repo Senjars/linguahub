@@ -13,3 +13,9 @@ eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka
+
+keycloak:
+  base-url: http://keycloak:8080
+  realm: linguahub
+  admin-client-id: user-service-admin
+  admin-client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET}

@@ -4,6 +4,12 @@ server:
 spring:
   application:
     name: booking-service
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/linguahub
+          jwk-set-uri: http://keycloak:8080/realms/linguahub/protocol/openid-connect/certs
   jpa:
     hibernate:
       ddl-auto: update
