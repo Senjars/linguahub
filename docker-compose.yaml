@@ -43,6 +43,18 @@ services:
     networks:
       - linguahub-network
 
+  postgres-keycloak:
+    image: postgres:16-alpine
+    container_name: linguahub-postgres-keycloak
+    environment:
+      POSTGRES_DB: ${POSTGRES_KEYCLOAK_DB}
+      POSTGRES_USER: ${POSTGRES_KEYCLOAK_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_KEYCLOAK_PASSWORD}
+    volumes:
+      - postgres-keycloak-data:/var/lib/postgresql/data
+    networks:
+      - linguahub-network
+
   discovery-server:
     image: discovery-server:latest
     container_name: linguahub-discovery-server
@@ -77,8 +89,14 @@ services:
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-keycloak:5432/${POSTGRES_KEYCLOAK_DB}
+      KC_DB_USERNAME: ${POSTGRES_KEYCLOAK_USER}
+      KC_DB_PASSWORD: ${POSTGRES_KEYCLOAK_PASSWORD}
     ports:
       - "${KEYCLOAK_PORT}:8080"
+    depends_on:
+      - postgres-keycloak
     networks:
       - linguahub-network
 
@@ -154,3 +172,4 @@ volumes:
   postgres-users-data:
   postgres-bookings-data:
   postgres-payments-data:
+  postgres-keycloak-data:
