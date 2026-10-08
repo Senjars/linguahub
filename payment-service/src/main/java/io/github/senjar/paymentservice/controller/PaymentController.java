@@ -1,7 +1,9 @@
 package io.github.senjar.paymentservice.controller;
 
 import io.github.senjar.paymentservice.dto.PaymentResponseDto;
+import io.github.senjar.paymentservice.security.CurrentUserId;
 import io.github.senjar.paymentservice.service.PaymentService;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,14 +24,14 @@ public class PaymentController {
     private final PaymentService paymentService;
 
     @GetMapping
-    public Page<PaymentResponseDto> getPaymentsByUserId(
-            @RequestParam Long userId, Pageable pageable) {
+    public Page<PaymentResponseDto> getMyPayments(
+            @CurrentUserId UUID userId, Pageable pageable) {
         return paymentService.getPaymentsByUserId(userId, pageable);
     }
 
     @PostMapping("/single-lesson")
     public PaymentResponseDto createLessonPayment(
-            @RequestParam Long userId, @RequestParam Long bookingId) {
+            @CurrentUserId UUID userId, @RequestParam Long bookingId) {
         return paymentService.createSingleLessonPayment(userId, bookingId);
     }
 

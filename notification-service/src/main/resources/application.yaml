@@ -4,7 +4,8 @@ server:
 spring:
   application:
     name: notification-service
-
+#  kafka:
+#    bootstrap-servers: kafka:9092
 resend:
   api-key: ${RESEND_API_KEY}
   from-address: onboarding@resend.dev

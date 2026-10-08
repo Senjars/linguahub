@@ -3,77 +3,54 @@ package io.github.senjar.bookingservice.service.impl;
 import io.github.senjar.bookingservice.client.PaymentClient;
 import io.github.senjar.bookingservice.dto.booking.BookingRequestDto;
 import io.github.senjar.bookingservice.dto.booking.BookingResponseDto;
-import io.github.senjar.bookingservice.dto.booking.UpdateBookingDto;
 import io.github.senjar.bookingservice.dto.payment.PaymentResponseDto;
 import io.github.senjar.bookingservice.exception.EntityNotFoundException;
+import io.github.senjar.bookingservice.exception.SlotFullException;
 import io.github.senjar.bookingservice.mapper.BookingMapper;
 import io.github.senjar.bookingservice.model.booking.Booking;
 import io.github.senjar.bookingservice.model.booking.Status;
 import io.github.senjar.bookingservice.repository.BookingRepository;
+import io.github.senjar.bookingservice.repository.SlotRepository;
 import io.github.senjar.bookingservice.service.BookingService;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class BookingServiceImpl implements BookingService {
 
     private final BookingRepository bookingRepository;
     private final BookingMapper bookingMapper;
     private final PaymentClient paymentClient;
+    private final SlotRepository slotRepository;
 
     @Override
     @Transactional
-    public BookingResponseDto createBooking(BookingRequestDto bookingRequestDto, Long userId) {
-        Booking booking = bookingMapper.toEntity(bookingRequestDto);
+    public BookingResponseDto createBooking(BookingRequestDto bookingRequestDto, UUID userId) {
+        int reserved = slotRepository.tryReserveSlot(bookingRequestDto.slotId());
+        if (reserved == 0) {
+            throw new SlotFullException("Slot " + bookingRequestDto.slotId() + " is full or does not exist");
+        }
 
+        Booking booking = bookingMapper.toEntity(bookingRequestDto);
         booking.setStudentId(userId);
         booking.setStatus(Status.PENDING);
 
         Booking savedBooking = bookingRepository.save(booking);
 
-        PaymentResponseDto paymentResponseDto = paymentClient.createLessonPayment(userId, booking.getId());
+
+        PaymentResponseDto paymentResponseDto = paymentClient.createLessonPayment(booking.getId());
         booking.setPaymentId(paymentResponseDto.id());
 
-        return bookingMapper.toDto(savedBooking);
-    }
+        log.info("Booking {} created for student {} (slot {}, payment {})",
+                savedBooking.getId(), userId, bookingRequestDto.slotId(), paymentResponseDto.id());
 
-    @Override
-    @Transactional(readOnly = true)
-    public BookingResponseDto findBooking(Long bookingId, Long userId) {
-        Booking booking = getBookingByIdAndStudentId(bookingId, userId);
-
-        return bookingMapper.toDto(booking);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<BookingResponseDto> getBookingsForStudent(Long userId) {
-        return bookingRepository.findAllByStudentId(userId).stream()
-                .map(bookingMapper::toDto)
-                .toList();
-    }
-
-    @Override
-    @Transactional
-    public BookingResponseDto updateBooking(UpdateBookingDto updateBookingDto, Long bookingId,
-                                            Long userId) {
-        Booking booking = getBookingByIdAndStudentId(bookingId, userId);
-
-        bookingMapper.updateBooking(booking, updateBookingDto);
-        Booking updatedBooking = bookingRepository.save(booking);
-
-        return bookingMapper.toDto(updatedBooking);
-    }
-
-    @Override
-    @Transactional
-    public void cancelBooking(Long bookingId, Long userId) {
-        Booking booking = getBookingByIdAndStudentId(bookingId, userId);
-
-        bookingRepository.delete(booking);
+        return bookingMapper.toDto(savedBooking, paymentResponseDto.sessionUrl());
     }
 
     @Override
@@ -85,11 +62,26 @@ public class BookingServiceImpl implements BookingService {
         if (booking.getStatus() == Status.PENDING) {
             booking.setStatus(Status.CONFIRMED);
             bookingRepository.save(booking);
+            log.info("Booking {} confirmed", bookingId);
+        } else {
+            log.info("Booking {} already {}, ignoring duplicate confirmation", bookingId, booking.getStatus());
         }
     }
 
-    private Booking getBookingByIdAndStudentId(Long bookingId, Long userId) {
-        return bookingRepository.findByIdAndStudentId(bookingId, userId)
+    @Override
+    @Transactional(readOnly = true)
+    public BookingResponseDto findBooking(Long bookingId, UUID userId) {
+        Booking booking = bookingRepository.findByIdAndStudentId(bookingId, userId)
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
+
+        return bookingMapper.toDto(booking);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BookingResponseDto> getBookingsForStudent(UUID userId) {
+        return bookingRepository.findAllByStudentId(userId).stream()
+                .map(bookingMapper::toDto)
+                .toList();
     }
 }

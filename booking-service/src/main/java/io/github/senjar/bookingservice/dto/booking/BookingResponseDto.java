@@ -1,4 +1,14 @@
 package io.github.senjar.bookingservice.dto.booking;
 
-public record BookingResponseDto() {
+import io.github.senjar.bookingservice.model.booking.Status;
+import java.util.UUID;
+
+public record BookingResponseDto(
+        Long id,
+        Long slotId,
+        UUID studentId,
+        Status status,
+        String sessionUrl
+) {
 }
+

@@ -15,7 +15,10 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/users/register").permitAll()
+                        .requestMatchers("/api/v1/users/register",
+                                "/api/v1/payments/success",
+                                "/api/v1/payments/cancel",
+                                "/api/v1/payments/webhook").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}));

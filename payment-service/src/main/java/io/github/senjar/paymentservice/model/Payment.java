@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
@@ -35,7 +36,7 @@ public class Payment {
     private Long bookingId;
 
     @Column(name = "user_id", nullable = false)
-    private Long userId;
+    private UUID userId;
 
     @Column(nullable = false, length = 1000)
     private String sessionUrl;
