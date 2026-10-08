@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -29,7 +30,7 @@ public class Slot {
     private Long id;
 
     @Column(name = "teacher_id", nullable = false)
-    private Long teacherId;
+    private UUID teacherId;
 
     @Column(name = "start_time", nullable = false)
     private LocalDateTime startTime;

@@ -11,6 +11,7 @@ import io.github.senjar.paymentservice.config.StripeConfig;
 import io.github.senjar.paymentservice.exception.PaymentException;
 import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -34,7 +35,7 @@ public class StripeProvider {
         }
     }
 
-    public Session createSession(Long userId, Long bookingId, BigDecimal amount, String description)
+    public Session createSession(UUID userId, Long bookingId, BigDecimal amount, String description)
             throws StripeException {
         long amountInCents = amount.movePointRight(2).longValueExact();
 

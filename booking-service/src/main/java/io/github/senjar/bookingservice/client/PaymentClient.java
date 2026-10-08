@@ -10,6 +10,5 @@ public interface PaymentClient {
 
     @PostMapping("/api/v1/payments/single-lesson")
     PaymentResponseDto createLessonPayment(
-            @RequestParam("userId") Long userId,
             @RequestParam("bookingId") Long bookingId);
 }

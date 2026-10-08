@@ -14,6 +14,11 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+  kafka:
+    bootstrap-servers: kafka:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
 eureka:
   client:
     service-url:
@@ -22,6 +27,6 @@ eureka:
 stripe:
   secret-key: ${STRIPE_SECRET_KEY}
   webhook-secret: ${STRIPE_WEBHOOK_SECRET}
-  app-url: http://localhost:8083
+  app-url: http://localhost:8080
   success-url: http://localhost:8083/payment/success
   cancel-url: http://localhost:8083/payment/cancel

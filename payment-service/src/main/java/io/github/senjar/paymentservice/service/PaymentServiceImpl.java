@@ -4,7 +4,6 @@ import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
 import com.stripe.model.checkout.Session;
-import io.github.senjar.paymentservice.client.BookingClient;
 import io.github.senjar.paymentservice.dto.PaymentResponseDto;
 import io.github.senjar.paymentservice.exception.PaymentException;
 import io.github.senjar.paymentservice.mapper.PaymentMapper;
@@ -15,6 +14,7 @@ import io.github.senjar.paymentservice.repository.PaymentRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -32,11 +32,11 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentRepository paymentRepository;
     private final StripeProvider stripeProvider;
     private final PaymentMapper paymentMapper;
-    private final BookingClient bookingClient;
+    private final PaymentEventPublisher paymentEventPublisher;
 
     @Override
     @Transactional
-    public PaymentResponseDto createSingleLessonPayment(Long userId, Long bookingId) {
+    public PaymentResponseDto createSingleLessonPayment(UUID userId, Long bookingId) {
         Optional<Payment> existing = paymentRepository.findByBookingId(bookingId);
 
         if (existing.isPresent()) {
@@ -68,7 +68,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<PaymentResponseDto> getPaymentsByUserId(Long userId, Pageable pageable) {
+    public Page<PaymentResponseDto> getPaymentsByUserId(UUID userId, Pageable pageable) {
         return paymentRepository.findByUserId(userId, pageable).map(paymentMapper::toDto);
     }
 
@@ -96,19 +96,9 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setStatus(PaymentStatus.PAID);
         Payment savedPayment = paymentRepository.save(payment);
 
-        notifyBookingService(savedPayment.getBookingId());
+        paymentEventPublisher.publishPaymentConfirmed(savedPayment.getBookingId());
 
         return paymentMapper.toDto(savedPayment);
-    }
-
-    private void notifyBookingService(Long bookingId) {
-        try {
-            bookingClient.confirmBooking(bookingId);
-        } catch (Exception e) {
-            log.error("Failed to notify booking-service about confirmation of booking {}: {}. "
-                    + "Booking will remain PENDING despite successful payment — "
-                    + "a retry/reconciliation mechanism is needed.", bookingId, e.getMessage());
-        }
     }
 
     @Override
@@ -153,7 +143,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
-    private Session createStripeSession(Long userId, Long bookingId, BigDecimal amount, String description) {
+    private Session createStripeSession(UUID userId, Long bookingId, BigDecimal amount, String description) {
         try {
             return stripeProvider.createSession(userId, bookingId, amount, description);
         } catch (StripeException e) {
