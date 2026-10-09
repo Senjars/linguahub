@@ -50,7 +50,8 @@ public class StripeProvider {
                 .path("/cancel")
                 .build().toUriString();
 
-        SessionCreateParams.LineItem.PriceData priceData = SessionCreateParams.LineItem.PriceData.builder()
+        SessionCreateParams.LineItem.PriceData priceData =
+                SessionCreateParams.LineItem.PriceData.builder()
                 .setCurrency("usd")
                 .setUnitAmount(amountInCents)
                 .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()

@@ -102,7 +102,7 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.7.3
     container_name: linguahub-keycloak
-    command: start-dev
+    command: start-dev --import-realm
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
@@ -110,11 +110,14 @@ services:
       KC_DB_URL: jdbc:postgresql://postgres-keycloak:5432/${POSTGRES_KEYCLOAK_DB}
       KC_DB_USERNAME: ${POSTGRES_KEYCLOAK_USER}
       KC_DB_PASSWORD: ${POSTGRES_KEYCLOAK_PASSWORD}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
     ports:
       - "${KEYCLOAK_PORT}:8080"
     depends_on:
       postgres-keycloak:
         condition: service_healthy
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/linguahub-realm.json:ro
     networks:
       - linguahub-network
 
@@ -193,6 +196,8 @@ services:
     depends_on:
       discovery-server:
         condition: service_started
+      kafka:
+        condition: service_healthy
     restart: on-failure
     networks:
       - linguahub-network

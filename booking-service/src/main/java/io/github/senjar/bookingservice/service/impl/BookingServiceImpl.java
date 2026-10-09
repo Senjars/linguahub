@@ -4,13 +4,16 @@ import io.github.senjar.bookingservice.client.PaymentClient;
 import io.github.senjar.bookingservice.dto.booking.BookingRequestDto;
 import io.github.senjar.bookingservice.dto.booking.BookingResponseDto;
 import io.github.senjar.bookingservice.dto.payment.PaymentResponseDto;
+import io.github.senjar.bookingservice.event.BookingConfirmedEvent;
 import io.github.senjar.bookingservice.exception.EntityNotFoundException;
 import io.github.senjar.bookingservice.exception.SlotFullException;
 import io.github.senjar.bookingservice.mapper.BookingMapper;
 import io.github.senjar.bookingservice.model.booking.Booking;
 import io.github.senjar.bookingservice.model.booking.Status;
+import io.github.senjar.bookingservice.model.slot.Slot;
 import io.github.senjar.bookingservice.repository.BookingRepository;
 import io.github.senjar.bookingservice.repository.SlotRepository;
+import io.github.senjar.bookingservice.service.BookingEventPublisher;
 import io.github.senjar.bookingservice.service.BookingService;
 import java.util.List;
 import java.util.UUID;
@@ -28,24 +31,28 @@ public class BookingServiceImpl implements BookingService {
     private final BookingMapper bookingMapper;
     private final PaymentClient paymentClient;
     private final SlotRepository slotRepository;
+    private final BookingEventPublisher bookingEventPublisher;
 
     @Override
     @Transactional
-    public BookingResponseDto createBooking(BookingRequestDto bookingRequestDto, UUID userId) {
+    public BookingResponseDto createBooking(BookingRequestDto bookingRequestDto,
+                                            UUID userId, String email) {
         int reserved = slotRepository.tryReserveSlot(bookingRequestDto.slotId());
         if (reserved == 0) {
-            throw new SlotFullException("Slot " + bookingRequestDto.slotId() + " is full or does not exist");
+            throw new SlotFullException("Slot " + bookingRequestDto.slotId()
+                    + " is full or does not exist");
         }
 
         Booking booking = bookingMapper.toEntity(bookingRequestDto);
         booking.setStudentId(userId);
+        booking.setStudentEmail(email);
         booking.setStatus(Status.PENDING);
 
         Booking savedBooking = bookingRepository.save(booking);
 
-
-        PaymentResponseDto paymentResponseDto = paymentClient.createLessonPayment(booking.getId());
-        booking.setPaymentId(paymentResponseDto.id());
+        PaymentResponseDto paymentResponseDto =
+                paymentClient.createLessonPayment(savedBooking.getId());
+        savedBooking.setPaymentId(paymentResponseDto.id());
 
         log.info("Booking {} created for student {} (slot {}, payment {})",
                 savedBooking.getId(), userId, bookingRequestDto.slotId(), paymentResponseDto.id());
@@ -63,8 +70,15 @@ public class BookingServiceImpl implements BookingService {
             booking.setStatus(Status.CONFIRMED);
             bookingRepository.save(booking);
             log.info("Booking {} confirmed", bookingId);
+
+            Slot slot = slotRepository.findById(booking.getSlotId())
+                    .orElseThrow(() -> new EntityNotFoundException("Slot not found"));
+            bookingEventPublisher.publishBookingConfirmed(new BookingConfirmedEvent(
+                    booking.getId(), slot.getId(), booking.getStudentEmail(),
+                    slot.getStartTime(), slot.getEndTime()));
         } else {
-            log.info("Booking {} already {}, ignoring duplicate confirmation", bookingId, booking.getStatus());
+            log.info("Booking {} already {}, ignoring duplicate confirmation",
+                    bookingId, booking.getStatus());
         }
     }
 

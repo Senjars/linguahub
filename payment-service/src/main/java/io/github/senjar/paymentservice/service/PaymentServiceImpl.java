@@ -43,7 +43,8 @@ public class PaymentServiceImpl implements PaymentService {
             Payment payment = existing.get();
 
             if (payment.getStatus() == PaymentStatus.PAID) {
-                throw new PaymentException("Payment for booking with id: " + bookingId + " is already paid.");
+                throw new PaymentException("Payment for booking with id: "
+                        + bookingId + " is already paid.");
             }
 
             if (payment.getStatus() == PaymentStatus.PENDING) {
@@ -86,11 +87,13 @@ public class PaymentServiceImpl implements PaymentService {
         Session session = stripeProvider.getSession(sessionId);
 
         if (session == null) {
-            throw new EntityNotFoundException("Session with ID: " + sessionId + " not found in Stripe");
+            throw new EntityNotFoundException("Session with ID: "
+                    + sessionId + " not found in Stripe");
         }
 
         if (!"paid".equals(session.getPaymentStatus())) {
-            throw new PaymentException("Payment with session ID: " + sessionId + " is not paid yet in Stripe");
+            throw new PaymentException("Payment with session ID: "
+                    + sessionId + " is not paid yet in Stripe");
         }
 
         payment.setStatus(PaymentStatus.PAID);
@@ -143,7 +146,8 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
-    private Session createStripeSession(UUID userId, Long bookingId, BigDecimal amount, String description) {
+    private Session createStripeSession(UUID userId, Long bookingId,
+                                        BigDecimal amount, String description) {
         try {
             return stripeProvider.createSession(userId, bookingId, amount, description);
         } catch (StripeException e) {

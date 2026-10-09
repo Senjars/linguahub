@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository;
 public interface SlotRepository extends JpaRepository<Slot, Long> {
 
     @Modifying
-    @Query("UPDATE Slot s SET s.bookedCount = s.bookedCount + 1 " +
-            "WHERE s.id = :slotId AND s.bookedCount < s.capacity")
+    @Query("UPDATE Slot s SET s.bookedCount = s.bookedCount + 1 "
+            + "WHERE s.id = :slotId AND s.bookedCount < s.capacity")
     int tryReserveSlot(@Param("slotId") Long slotId);
 }

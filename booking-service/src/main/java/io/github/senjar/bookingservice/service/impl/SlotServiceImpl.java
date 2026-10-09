@@ -31,7 +31,8 @@ public class SlotServiceImpl implements SlotService {
         Slot slot = getSlotOrThrow(slotId);
 
         if (!Objects.equals(slot.getTeacherId(), teacherId)) {
-            log.warn("Teacher {} tried to delete slot {} owned by {}", teacherId, slotId, slot.getTeacherId());
+            log.warn("Teacher {} tried to delete slot {} owned by {}",
+                    teacherId, slotId, slot.getTeacherId());
 
             throw new AccessDeniedException("You cannot remove slot with id: " + slotId);
         }
@@ -61,8 +62,8 @@ public class SlotServiceImpl implements SlotService {
     @Override
     @Transactional(readOnly = true)
     public List<SlotResponseDto> getAllSlots() {
-        return slotRepository.findAll().stream().
-                map(slotMapper::toDto).toList();
+        return slotRepository.findAll().stream()
+                        .map(slotMapper::toDto).toList();
     }
 
     @Override
@@ -74,6 +75,7 @@ public class SlotServiceImpl implements SlotService {
 
     private Slot getSlotOrThrow(Long slotId) {
         return slotRepository.findById(slotId)
-                .orElseThrow(() -> new EntityNotFoundException("Slot not found with id: " + slotId));
+                .orElseThrow(() -> new EntityNotFoundException("Slot not found with id: "
+                        + slotId));
     }
 }

@@ -2,9 +2,9 @@ package io.github.senjar.bookingservice.controller;
 
 import io.github.senjar.bookingservice.dto.booking.BookingRequestDto;
 import io.github.senjar.bookingservice.dto.booking.BookingResponseDto;
+import io.github.senjar.bookingservice.security.CurrentUserEmail;
 import io.github.senjar.bookingservice.security.CurrentUserId;
 import io.github.senjar.bookingservice.service.BookingService;
-import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -14,10 +14,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -51,8 +48,9 @@ public class BookingController {
     @ResponseStatus(HttpStatus.CREATED)
     public BookingResponseDto bookLesson(
             @RequestBody @Valid BookingRequestDto bookingRequestDto,
-            @CurrentUserId UUID userId) {
-        return bookingService.createBooking(bookingRequestDto, userId);
+            @CurrentUserId UUID userId,
+            @CurrentUserEmail String email) {
+        return bookingService.createBooking(bookingRequestDto, userId, email);
     }
 
     @Operation(
