@@ -8,6 +8,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
-@AuthenticationPrincipal(expression = "T(java.util.UUID).fromString(subject)")
-public @interface CurrentUserId {
+@AuthenticationPrincipal(expression = "claims['email']")
+public @interface CurrentUserEmail {
 }

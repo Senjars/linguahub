@@ -53,7 +53,8 @@ public class KeycloakAdminService {
 
         String location = response.getHeaders().getFirst(HttpHeaders.LOCATION);
         if (location == null) {
-            throw new KeycloakAdminException("Keycloak did not return a Location header for the created user");
+            throw new KeycloakAdminException("Keycloak did not return a "
+                    + "Location header for the created user");
         }
         return location.substring(location.lastIndexOf('/') + 1);
     }

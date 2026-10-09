@@ -1,8 +1,6 @@
 package io.github.senjar.paymentservice.repository;
 
 import io.github.senjar.paymentservice.model.Payment;
-import io.github.senjar.paymentservice.model.PaymentStatus;
-import io.github.senjar.paymentservice.model.PaymentType;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -18,6 +16,4 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     Optional<Payment> findPaymentBySessionId(String sessionId);
 
     Optional<Payment> findByBookingId(Long bookingId);
-
-    Optional<Payment> findByUserIdAndTypeAndStatus(Long userId, PaymentType paymentType, PaymentStatus paymentStatus);
 }

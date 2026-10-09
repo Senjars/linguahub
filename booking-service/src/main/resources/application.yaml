@@ -1,6 +1,14 @@
 server:
   port: 8082
 
+logging:
+  level:
+    root: INFO
+    org.springframework.web: DEBUG
+    org.springframework.validation: DEBUG
+    org.springframework.web.filter.CommonsRequestLoggingFilter: DEBUG
+    io.github.senjar.bookingservice: DEBUG
+
 spring:
   application:
     name: booking-service
@@ -25,6 +33,9 @@ spring:
         spring.json.use.type.headers: false
         spring.json.value.default.type: io.github.senjar.bookingservice.event.PaymentConfirmedEvent
         spring.json.trusted.packages: "*"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
 eureka:
   client:
     service-url:

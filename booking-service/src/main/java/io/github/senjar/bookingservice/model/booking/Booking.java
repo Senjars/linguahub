@@ -38,6 +38,9 @@ public class Booking {
     @Column(name = "student_id", nullable = false)
     private UUID studentId;
 
+    @Column(name = "student_email")
+    private String studentEmail;
+
     @Enumerated(EnumType.STRING)
     private Status status;
 

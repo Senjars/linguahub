@@ -20,5 +20,6 @@ public interface BookingMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "paymentId", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "studentEmail", ignore = true)
     Booking toEntity(BookingRequestDto bookingRequestDto);
 }
