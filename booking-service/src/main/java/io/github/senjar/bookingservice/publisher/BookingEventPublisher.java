@@ -1,4 +1,4 @@
-package io.github.senjar.bookingservice.service;
+package io.github.senjar.bookingservice.publisher;
 
 import io.github.senjar.bookingservice.event.BookingConfirmedEvent;
 import lombok.RequiredArgsConstructor;

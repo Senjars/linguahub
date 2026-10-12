@@ -10,10 +10,12 @@ import io.github.senjar.bookingservice.exception.SlotFullException;
 import io.github.senjar.bookingservice.mapper.BookingMapper;
 import io.github.senjar.bookingservice.model.booking.Booking;
 import io.github.senjar.bookingservice.model.booking.Status;
+import io.github.senjar.bookingservice.model.outbox.EventType;
+import io.github.senjar.bookingservice.model.outbox.Outbox;
 import io.github.senjar.bookingservice.model.slot.Slot;
 import io.github.senjar.bookingservice.repository.BookingRepository;
+import io.github.senjar.bookingservice.repository.OutboxRepository;
 import io.github.senjar.bookingservice.repository.SlotRepository;
-import io.github.senjar.bookingservice.service.BookingEventPublisher;
 import io.github.senjar.bookingservice.service.BookingService;
 import java.util.List;
 import java.util.UUID;
@@ -21,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 @Slf4j
@@ -31,7 +34,8 @@ public class BookingServiceImpl implements BookingService {
     private final BookingMapper bookingMapper;
     private final PaymentClient paymentClient;
     private final SlotRepository slotRepository;
-    private final BookingEventPublisher bookingEventPublisher;
+    private final ObjectMapper objectMapper;
+    private final OutboxRepository outboxRepository;
 
     @Override
     @Transactional
@@ -73,9 +77,24 @@ public class BookingServiceImpl implements BookingService {
 
             Slot slot = slotRepository.findById(booking.getSlotId())
                     .orElseThrow(() -> new EntityNotFoundException("Slot not found"));
-            bookingEventPublisher.publishBookingConfirmed(new BookingConfirmedEvent(
-                    booking.getId(), slot.getId(), booking.getStudentEmail(),
-                    slot.getStartTime(), slot.getEndTime()));
+
+            try {
+                BookingConfirmedEvent event = new BookingConfirmedEvent(
+                        booking.getId(), slot.getId(), booking.getStudentEmail(),
+                        slot.getStartTime(), slot.getEndTime());
+
+                String payload = objectMapper.writeValueAsString(event);
+
+                Outbox outboxMessage = new Outbox();
+                outboxMessage.setEventType(EventType.BOOKING_CONFIRMED);
+                outboxMessage.setPayload(payload);
+
+                outboxRepository.save(outboxMessage);
+
+                log.info("Outbox message saved for confirmed booking {}", bookingId);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to create outbox message for booking " + bookingId, e);
+            }
         } else {
             log.info("Booking {} already {}, ignoring duplicate confirmation",
                     bookingId, booking.getStatus());

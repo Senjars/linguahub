@@ -1,0 +1,6 @@
+eureka:
+  client:
+    enabled: false
+
+keycloak:
+  admin-client-secret: test-secret

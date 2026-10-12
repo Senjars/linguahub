@@ -1,6 +1,6 @@
 package io.github.senjar.paymentservice.repository;
 
-import io.github.senjar.paymentservice.model.Payment;
+import io.github.senjar.paymentservice.model.payment.Payment;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;

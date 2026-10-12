@@ -1,7 +1,7 @@
 package io.github.senjar.paymentservice.mapper;
 
 import io.github.senjar.paymentservice.dto.PaymentResponseDto;
-import io.github.senjar.paymentservice.model.Payment;
+import io.github.senjar.paymentservice.model.payment.Payment;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

@@ -1,6 +1,6 @@
 package io.github.senjar.paymentservice.dto;
 
-import io.github.senjar.paymentservice.model.PaymentStatus;
+import io.github.senjar.paymentservice.model.payment.PaymentStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
