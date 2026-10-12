@@ -65,7 +65,8 @@ class BookingConfirmedListenerKafkaTest {
     class BookingConfirmedMessage {
 
         @Test
-        @DisplayName("Should read the JSON from booking-service and send the email with the lesson times")
+        @DisplayName("Should read the JSON from booking-service "
+                + "and send the email with the lesson times")
         void bookingConfirmed_validJson_sendsEmailToStudent() throws Exception {
             // WHEN
             sendRaw(KEY, BOOKING_CONFIRMED_JSON);

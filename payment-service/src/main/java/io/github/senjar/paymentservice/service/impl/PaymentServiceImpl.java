@@ -1,17 +1,21 @@
-package io.github.senjar.paymentservice.service;
+package io.github.senjar.paymentservice.service.impl;
 
 import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
 import com.stripe.model.checkout.Session;
 import io.github.senjar.paymentservice.dto.PaymentResponseDto;
+import io.github.senjar.paymentservice.event.PaymentConfirmedEvent;
 import io.github.senjar.paymentservice.exception.PaymentException;
 import io.github.senjar.paymentservice.mapper.PaymentMapper;
+import io.github.senjar.paymentservice.model.outbox.EventType;
+import io.github.senjar.paymentservice.model.outbox.Outbox;
 import io.github.senjar.paymentservice.model.payment.Payment;
 import io.github.senjar.paymentservice.model.payment.PaymentStatus;
 import io.github.senjar.paymentservice.model.payment.PaymentType;
-import io.github.senjar.paymentservice.publisher.PaymentEventPublisher;
+import io.github.senjar.paymentservice.repository.OutboxRepository;
 import io.github.senjar.paymentservice.repository.PaymentRepository;
+import io.github.senjar.paymentservice.service.PaymentService;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -22,6 +26,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
 @Service
@@ -33,7 +38,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentRepository paymentRepository;
     private final StripeProvider stripeProvider;
     private final PaymentMapper paymentMapper;
-    private final PaymentEventPublisher paymentEventPublisher;
+    private final OutboxRepository outboxRepository;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
@@ -100,7 +106,7 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setStatus(PaymentStatus.PAID);
         Payment savedPayment = paymentRepository.save(payment);
 
-        paymentEventPublisher.publishPaymentConfirmed(savedPayment.getBookingId());
+        savePaymentConfirmedOutbox(savedPayment.getBookingId());
 
         return paymentMapper.toDto(savedPayment);
     }
@@ -127,6 +133,23 @@ public class PaymentServiceImpl implements PaymentService {
         } catch (StripeException e) {
             throw new PaymentException("Webhook processing failed: " + e.getMessage());
         }
+    }
+
+    private void savePaymentConfirmedOutbox(Long bookingId) {
+        String payload;
+        try {
+            payload = objectMapper.writeValueAsString(new PaymentConfirmedEvent(bookingId));
+        } catch (RuntimeException e) {
+            throw new IllegalStateException(
+                    "Failed to create outbox message for booking " + bookingId, e);
+        }
+
+        Outbox outboxMessage = new Outbox();
+        outboxMessage.setEventType(EventType.PAYMENT_CONFIRMED);
+        outboxMessage.setPayload(payload);
+        outboxRepository.save(outboxMessage);
+
+        log.info("Outbox message saved for confirmed payment of booking {}", bookingId);
     }
 
     private Session extractSession(Event event) {

@@ -1,4 +1,4 @@
-package io.github.senjar.paymentservice.service;
+package io.github.senjar.paymentservice.service.impl;
 
 import com.stripe.Stripe;
 import com.stripe.exception.SignatureVerificationException;

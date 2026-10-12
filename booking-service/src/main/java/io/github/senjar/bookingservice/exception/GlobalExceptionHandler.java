@@ -21,7 +21,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             SlotFullException.class,
             SlotOverlapException.class,
-            SlotHasBookingsException.class})
+            SlotHasBookingsException.class,
+            DuplicateBookingException.class})
     public ProblemDetail handleConflict(RuntimeException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }

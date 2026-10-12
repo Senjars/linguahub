@@ -15,6 +15,8 @@ import org.springframework.web.client.RestClient;
 @RequiredArgsConstructor
 public class EmailService {
 
+    private static final String IDEMPOTENCY_HEADER = "Idempotency-Key";
+
     private final RestClient resendRestClient;
 
     @Value("${resend.api-key}")
@@ -33,12 +35,15 @@ public class EmailService {
 
         resendRestClient.post()
                 .uri("/emails")
-                .header("Authorization", "Bearer " + apiKey)
+                .headers(headers -> {
+                    headers.setBearerAuth(apiKey);
+                    headers.set(IDEMPOTENCY_HEADER, request.idempotencyKey());
+                })
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(payload)
                 .retrieve()
                 .toBodilessEntity();
 
-        log.info("Email sent to {}", request.to());
+        log.info("Email sent to {} (idempotency key: {})", request.to(), request.idempotencyKey());
     }
 }

@@ -5,6 +5,7 @@ import io.github.senjar.bookingservice.dto.booking.BookingRequestDto;
 import io.github.senjar.bookingservice.dto.booking.BookingResponseDto;
 import io.github.senjar.bookingservice.dto.payment.PaymentResponseDto;
 import io.github.senjar.bookingservice.event.BookingConfirmedEvent;
+import io.github.senjar.bookingservice.exception.DuplicateBookingException;
 import io.github.senjar.bookingservice.exception.EntityNotFoundException;
 import io.github.senjar.bookingservice.exception.SlotFullException;
 import io.github.senjar.bookingservice.mapper.BookingMapper;
@@ -30,6 +31,8 @@ import tools.jackson.databind.ObjectMapper;
 @RequiredArgsConstructor
 public class BookingServiceImpl implements BookingService {
 
+    private static final List<Status> ACTIVE_STATUSES = List.of(Status.PENDING, Status.CONFIRMED);
+
     private final BookingRepository bookingRepository;
     private final BookingMapper bookingMapper;
     private final PaymentClient paymentClient;
@@ -41,10 +44,15 @@ public class BookingServiceImpl implements BookingService {
     @Transactional
     public BookingResponseDto createBooking(BookingRequestDto bookingRequestDto,
                                             UUID userId, String email) {
-        int reserved = slotRepository.tryReserveSlot(bookingRequestDto.slotId());
-        if (reserved == 0) {
-            throw new SlotFullException("Slot " + bookingRequestDto.slotId()
-                    + " is full or does not exist");
+        Long slotId = bookingRequestDto.slotId();
+
+        if (bookingRepository.existsByStudentIdAndSlotIdAndStatusIn(userId, slotId, ACTIVE_STATUSES)) {
+            throw new DuplicateBookingException(
+                    "Student already has an active booking for slot " + slotId);
+        }
+
+        if (slotRepository.tryReserveSlot(slotId) == 0) {
+            throw new SlotFullException("Slot " + slotId + " is full or does not exist");
         }
 
         Booking booking = bookingMapper.toEntity(bookingRequestDto);
@@ -59,7 +67,7 @@ public class BookingServiceImpl implements BookingService {
         savedBooking.setPaymentId(paymentResponseDto.id());
 
         log.info("Booking {} created for student {} (slot {}, payment {})",
-                savedBooking.getId(), userId, bookingRequestDto.slotId(), paymentResponseDto.id());
+                savedBooking.getId(), userId, slotId, paymentResponseDto.id());
 
         return bookingMapper.toDto(savedBooking, paymentResponseDto.sessionUrl());
     }
@@ -70,35 +78,25 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
 
-        if (booking.getStatus() == Status.PENDING) {
-            booking.setStatus(Status.CONFIRMED);
-            bookingRepository.save(booking);
-            log.info("Booking {} confirmed", bookingId);
-
-            Slot slot = slotRepository.findById(booking.getSlotId())
-                    .orElseThrow(() -> new EntityNotFoundException("Slot not found"));
-
-            try {
-                BookingConfirmedEvent event = new BookingConfirmedEvent(
-                        booking.getId(), slot.getId(), booking.getStudentEmail(),
-                        slot.getStartTime(), slot.getEndTime());
-
-                String payload = objectMapper.writeValueAsString(event);
-
-                Outbox outboxMessage = new Outbox();
-                outboxMessage.setEventType(EventType.BOOKING_CONFIRMED);
-                outboxMessage.setPayload(payload);
-
-                outboxRepository.save(outboxMessage);
-
-                log.info("Outbox message saved for confirmed booking {}", bookingId);
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to create outbox message for booking " + bookingId, e);
-            }
-        } else {
-            log.info("Booking {} already {}, ignoring duplicate confirmation",
-                    bookingId, booking.getStatus());
+        if (booking.getStatus() == Status.CONFIRMED) {
+            log.info("Booking {} already confirmed, ignoring duplicate confirmation", bookingId);
+            return;
         }
+
+        if (booking.getStatus() != Status.PENDING) {
+            log.warn("Payment confirmed for booking {} in status {}, it needs a manual refund",
+                    bookingId, booking.getStatus());
+            return;
+        }
+
+        Slot slot = slotRepository.findById(booking.getSlotId())
+                .orElseThrow(() -> new EntityNotFoundException("Slot not found"));
+
+        booking.setStatus(Status.CONFIRMED);
+        bookingRepository.save(booking);
+        log.info("Booking {} confirmed", bookingId);
+
+        saveBookingConfirmedOutbox(booking, slot);
     }
 
     @Override
@@ -116,5 +114,26 @@ public class BookingServiceImpl implements BookingService {
         return bookingRepository.findAllByStudentId(userId).stream()
                 .map(bookingMapper::toDto)
                 .toList();
+    }
+
+    private void saveBookingConfirmedOutbox(Booking booking, Slot slot) {
+        BookingConfirmedEvent event = new BookingConfirmedEvent(
+                booking.getId(), slot.getId(), booking.getStudentEmail(),
+                slot.getStartTime(), slot.getEndTime());
+
+        String payload;
+        try {
+            payload = objectMapper.writeValueAsString(event);
+        } catch (RuntimeException e) {
+            throw new IllegalStateException(
+                    "Failed to create outbox message for booking " + booking.getId(), e);
+        }
+
+        Outbox outboxMessage = new Outbox();
+        outboxMessage.setEventType(EventType.BOOKING_CONFIRMED);
+        outboxMessage.setPayload(payload);
+        outboxRepository.save(outboxMessage);
+
+        log.info("Outbox message saved for confirmed booking {}", booking.getId());
     }
 }
