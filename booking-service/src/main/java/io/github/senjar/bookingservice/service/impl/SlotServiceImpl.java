@@ -5,6 +5,7 @@ import io.github.senjar.bookingservice.dto.slot.SlotResponseDto;
 import io.github.senjar.bookingservice.exception.AccessDeniedException;
 import io.github.senjar.bookingservice.exception.EntityNotFoundException;
 import io.github.senjar.bookingservice.exception.SlotHasBookingsException;
+import io.github.senjar.bookingservice.exception.SlotOverlapException;
 import io.github.senjar.bookingservice.mapper.SlotMapper;
 import io.github.senjar.bookingservice.model.slot.Slot;
 import io.github.senjar.bookingservice.repository.SlotRepository;
@@ -49,6 +50,13 @@ public class SlotServiceImpl implements SlotService {
     @Override
     @Transactional
     public SlotResponseDto createSlot(UUID teacherId, CreateSlotDto createSlotDto) {
+
+        if (slotRepository.existsOverlapping(
+                teacherId, createSlotDto.startTime(), createSlotDto.endTime())) {
+            throw new SlotOverlapException("You already have a slot overlapping "
+                    + createSlotDto.startTime() + " - " + createSlotDto.endTime());
+        }
+
         Slot slot = slotMapper.toEntity(createSlotDto);
         slot.setTeacherId(teacherId);
 

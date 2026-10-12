@@ -1,4 +1,4 @@
-package io.github.senjar.paymentservice.model;
+package io.github.senjar.paymentservice.model.payment;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

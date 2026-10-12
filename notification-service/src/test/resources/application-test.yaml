@@ -1,0 +1,6 @@
+eureka:
+  client:
+    enabled: false
+
+resend:
+  api-key: test-key

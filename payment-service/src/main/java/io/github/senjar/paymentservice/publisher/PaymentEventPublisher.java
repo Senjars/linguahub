@@ -1,4 +1,4 @@
-package io.github.senjar.paymentservice.service;
+package io.github.senjar.paymentservice.publisher;
 
 import io.github.senjar.paymentservice.event.PaymentConfirmedEvent;
 import lombok.RequiredArgsConstructor;

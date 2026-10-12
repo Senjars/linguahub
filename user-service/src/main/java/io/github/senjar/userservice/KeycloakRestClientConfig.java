@@ -1,4 +1,4 @@
-package io.github.senjar.userservice.config;
+package io.github.senjar.userservice;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;

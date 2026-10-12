@@ -17,4 +17,12 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleAccessDenied(AccessDeniedException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.getMessage());
     }
+
+    @ExceptionHandler({
+            SlotFullException.class,
+            SlotOverlapException.class,
+            SlotHasBookingsException.class})
+    public ProblemDetail handleConflict(RuntimeException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
 }

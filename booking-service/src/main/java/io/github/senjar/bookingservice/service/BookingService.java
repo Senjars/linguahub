@@ -7,7 +7,8 @@ import java.util.UUID;
 
 public interface BookingService {
 
-    BookingResponseDto createBooking(BookingRequestDto bookingRequestDto, UUID userId, String email);
+    BookingResponseDto createBooking(BookingRequestDto bookingRequestDto,
+                                     UUID userId, String email);
 
     BookingResponseDto findBooking(Long bookingId, UUID userId);
 
