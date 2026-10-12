@@ -11,6 +11,15 @@ public record EmailRequestDto(
         String subject,
 
         @NotBlank
-        String htmlBody
+        String htmlBody,
+
+        @NotBlank
+        String idempotencyKey
 ) {
+
+    public EmailRequestDto {
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("idempotencyKey must not be blank");
+        }
+    }
 }

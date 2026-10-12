@@ -20,7 +20,7 @@ public class BookingConfirmedListener {
 
     @KafkaListener(topics = "booking-confirmed")
     public void handleBookingConfirmed(BookingConfirmedEvent event) {
-        log.info("Received BookingConfirmedEvent for booking{}", event.bookingId());
+        log.info("Received BookingConfirmedEvent for booking {}", event.bookingId());
 
         if (event.studentEmail() == null || event.studentEmail().isBlank()) {
             log.warn("Booking {} has no student email, skipping notification", event.bookingId());
@@ -33,6 +33,9 @@ public class BookingConfirmedListener {
                 + " - " + event.endTime().format(FORMAT) + ".</p>"
                 + "<p>Numer rezerwacji: " + event.bookingId() + "</p>";
 
-        emailService.sendEmail(new EmailRequestDto(event.studentEmail(), subject, htmlBody));
+        String idempotencyKey = "booking-confirmed/" + event.bookingId();
+
+        emailService.sendEmail(
+                new EmailRequestDto(event.studentEmail(), subject, htmlBody, idempotencyKey));
     }
 }

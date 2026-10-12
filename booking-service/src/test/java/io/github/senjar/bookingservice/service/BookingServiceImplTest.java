@@ -16,6 +16,7 @@ import io.github.senjar.bookingservice.dto.booking.BookingRequestDto;
 import io.github.senjar.bookingservice.dto.booking.BookingResponseDto;
 import io.github.senjar.bookingservice.dto.payment.PaymentResponseDto;
 import io.github.senjar.bookingservice.event.BookingConfirmedEvent;
+import io.github.senjar.bookingservice.exception.DuplicateBookingException;
 import io.github.senjar.bookingservice.exception.EntityNotFoundException;
 import io.github.senjar.bookingservice.exception.SlotFullException;
 import io.github.senjar.bookingservice.mapper.BookingMapper;
@@ -29,9 +30,11 @@ import io.github.senjar.bookingservice.repository.OutboxRepository;
 import io.github.senjar.bookingservice.repository.SlotRepository;
 import io.github.senjar.bookingservice.service.impl.BookingServiceImpl;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -133,7 +136,23 @@ public class BookingServiceImplTest {
             // WHEN / THEN
             assertThatThrownBy(() -> bookingService.createBooking(request, USER_ID, EMAIL))
                     .isInstanceOf(SlotFullException.class);
-            verifyNoInteractions(bookingMapper, bookingRepository, paymentClient);
+            verify(bookingRepository, never()).save(any(Booking.class));
+            verifyNoInteractions(bookingMapper, paymentClient);
+        }
+
+        @Test
+        @DisplayName("Should reject a second active booking of the same slot before taking a place")
+        void createBooking_studentAlreadyBookedSlot_throwsDuplicateBookingException() {
+            // GIVEN
+            BookingRequestDto request = provideBookingRequest();
+            when(bookingRepository.existsByStudentIdAndSlotIdAndStatusIn(eq(USER_ID), eq(SLOT_ID), any()))
+                    .thenReturn(true);
+
+            // WHEN / THEN
+            assertThatThrownBy(() -> bookingService.createBooking(request, USER_ID, EMAIL))
+                    .isInstanceOf(DuplicateBookingException.class);
+            verifyNoInteractions(slotRepository, paymentClient, bookingMapper);
+            verify(bookingRepository, never()).save(any(Booking.class));
         }
 
         @Test
@@ -235,6 +254,27 @@ public class BookingServiceImplTest {
             bookingService.confirmBooking(BOOKING_ID);
 
             // THEN
+            verify(bookingRepository, never()).save(any(Booking.class));
+            verifyNoInteractions(slotRepository, outboxRepository);
+        }
+
+        @Test
+        @DisplayName("Should neither confirm nor publish when the booking is no longer waiting for payment")
+        void confirmBooking_bookingInOtherStatus_doesNotConfirmNorStoreOutboxMessage() {
+            // GIVEN
+            Status other = Arrays.stream(Status.values())
+                    .filter(status -> status != Status.PENDING && status != Status.CONFIRMED)
+                    .findFirst()
+                    .orElse(null);
+            Assumptions.assumeTrue(other != null, "Status has no value besides PENDING and CONFIRMED");
+            Booking booking = provideBooking(other);
+            when(bookingRepository.findById(BOOKING_ID)).thenReturn(Optional.of(booking));
+
+            // WHEN
+            bookingService.confirmBooking(BOOKING_ID);
+
+            // THEN
+            assertThat(booking.getStatus()).isEqualTo(other);
             verify(bookingRepository, never()).save(any(Booking.class));
             verifyNoInteractions(slotRepository, outboxRepository);
         }

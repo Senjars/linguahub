@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.jayway.jsonpath.JsonPath;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
@@ -18,11 +19,15 @@ import com.stripe.model.checkout.Session;
 import io.github.senjar.paymentservice.dto.PaymentResponseDto;
 import io.github.senjar.paymentservice.exception.PaymentException;
 import io.github.senjar.paymentservice.mapper.PaymentMapper;
+import io.github.senjar.paymentservice.model.outbox.EventType;
+import io.github.senjar.paymentservice.model.outbox.Outbox;
 import io.github.senjar.paymentservice.model.payment.Payment;
 import io.github.senjar.paymentservice.model.payment.PaymentStatus;
 import io.github.senjar.paymentservice.model.payment.PaymentType;
-import io.github.senjar.paymentservice.publisher.PaymentEventPublisher;
+import io.github.senjar.paymentservice.repository.OutboxRepository;
 import io.github.senjar.paymentservice.repository.PaymentRepository;
+import io.github.senjar.paymentservice.service.impl.PaymentServiceImpl;
+import io.github.senjar.paymentservice.service.impl.StripeProvider;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.util.List;
@@ -35,11 +40,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import tools.jackson.databind.json.JsonMapper;
 
 @ExtendWith(MockitoExtension.class)
 public class PaymentServiceImplTest {
@@ -64,7 +71,10 @@ public class PaymentServiceImplTest {
     private PaymentMapper paymentMapper;
 
     @Mock
-    private PaymentEventPublisher paymentEventPublisher;
+    private OutboxRepository outboxRepository;
+
+    @Spy
+    private JsonMapper objectMapper = JsonMapper.builder().build();
 
     @InjectMocks
     private PaymentServiceImpl paymentService;
@@ -101,7 +111,7 @@ public class PaymentServiceImplTest {
             assertThat(saved.getAmountToPay()).isEqualByComparingTo(PRICE);
             assertThat(saved.getSessionId()).isEqualTo(SESSION_ID);
             assertThat(saved.getSessionUrl()).isEqualTo(SESSION_URL);
-            verifyNoInteractions(paymentEventPublisher);
+            verifyNoInteractions(outboxRepository);
         }
 
         @Test
@@ -221,8 +231,8 @@ public class PaymentServiceImplTest {
     class FulfillPayment {
 
         @Test
-        @DisplayName("Should mark the payment PAID and publish the event when Stripe says it is paid")
-        void fulfillPayment_pendingPaidInStripe_marksPaidAndPublishesEvent() {
+        @DisplayName("Should mark the payment PAID and store a PAYMENT_CONFIRMED outbox message")
+        void fulfillPayment_pendingPaidInStripe_marksPaidAndStoresOutboxMessage() {
             // GIVEN
             Payment payment = providePayment(PaymentStatus.PENDING);
             PaymentResponseDto expected = providePaymentResponse();
@@ -238,11 +248,11 @@ public class PaymentServiceImplTest {
             // THEN
             assertThat(result).isSameAs(expected);
             assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
-            verify(paymentEventPublisher).publishPaymentConfirmed(BOOKING_ID);
+            verifyOutboxMessageSavedFor(BOOKING_ID);
         }
 
         @Test
-        @DisplayName("Should be idempotent: an already PAID payment is returned without Stripe or event")
+        @DisplayName("Should be idempotent: an already PAID payment is returned without Stripe or outbox")
         void fulfillPayment_alreadyPaid_doesNothing() {
             // GIVEN
             Payment payment = providePayment(PaymentStatus.PAID);
@@ -256,7 +266,7 @@ public class PaymentServiceImplTest {
 
             // THEN
             assertThat(result).isSameAs(expected);
-            verifyNoInteractions(stripeProvider, paymentEventPublisher);
+            verifyNoInteractions(stripeProvider, outboxRepository);
             verify(paymentRepository, never()).save(any(Payment.class));
         }
 
@@ -270,7 +280,7 @@ public class PaymentServiceImplTest {
             assertThatThrownBy(() -> paymentService.fulfillPayment(SESSION_ID))
                     .isInstanceOf(EntityNotFoundException.class)
                     .hasMessageContaining(SESSION_ID);
-            verifyNoInteractions(stripeProvider, paymentEventPublisher);
+            verifyNoInteractions(stripeProvider, outboxRepository);
         }
 
         @Test
@@ -286,7 +296,7 @@ public class PaymentServiceImplTest {
             assertThatThrownBy(() -> paymentService.fulfillPayment(SESSION_ID))
                     .isInstanceOf(EntityNotFoundException.class)
                     .hasMessageContaining("not found in Stripe");
-            verifyNoInteractions(paymentEventPublisher);
+            verifyNoInteractions(outboxRepository);
         }
 
         @Test
@@ -304,7 +314,7 @@ public class PaymentServiceImplTest {
                     .hasMessageContaining("not paid yet");
             assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDING);
             verify(paymentRepository, never()).save(any(Payment.class));
-            verifyNoInteractions(paymentEventPublisher);
+            verifyNoInteractions(outboxRepository);
         }
     }
 
@@ -350,7 +360,7 @@ public class PaymentServiceImplTest {
 
             // THEN
             assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
-            verify(paymentEventPublisher).publishPaymentConfirmed(BOOKING_ID);
+            verifyOutboxMessageSavedFor(BOOKING_ID);
         }
 
         @Test
@@ -376,7 +386,7 @@ public class PaymentServiceImplTest {
             paymentService.processWebhook(PAYLOAD, SIGNATURE);
 
             // THEN
-            verify(paymentEventPublisher).publishPaymentConfirmed(BOOKING_ID);
+            verifyOutboxMessageSavedFor(BOOKING_ID);
         }
 
         @Test
@@ -395,7 +405,7 @@ public class PaymentServiceImplTest {
             assertThatThrownBy(() -> paymentService.processWebhook(PAYLOAD, SIGNATURE))
                     .isInstanceOf(PaymentException.class)
                     .hasMessageContaining("Empty session in webhook event");
-            verifyNoInteractions(paymentEventPublisher);
+            verifyNoInteractions(outboxRepository);
         }
 
         @Test
@@ -413,7 +423,7 @@ public class PaymentServiceImplTest {
             // WHEN / THEN
             assertThatCode(() -> paymentService.processWebhook(PAYLOAD, SIGNATURE))
                     .doesNotThrowAnyException();
-            verifyNoInteractions(paymentEventPublisher);
+            verifyNoInteractions(outboxRepository);
         }
 
         @Test
@@ -427,7 +437,7 @@ public class PaymentServiceImplTest {
             paymentService.processWebhook(PAYLOAD, SIGNATURE);
 
             // THEN
-            verifyNoInteractions(paymentRepository, paymentEventPublisher);
+            verifyNoInteractions(paymentRepository, outboxRepository);
         }
 
         @Test
@@ -442,8 +452,18 @@ public class PaymentServiceImplTest {
             assertThatThrownBy(() -> paymentService.processWebhook(PAYLOAD, SIGNATURE))
                     .isInstanceOf(PaymentException.class)
                     .hasMessageContaining("Webhook processing failed");
-            verifyNoInteractions(paymentRepository, paymentEventPublisher);
+            verifyNoInteractions(paymentRepository, outboxRepository);
         }
+    }
+
+    private void verifyOutboxMessageSavedFor(Long bookingId) {
+        ArgumentCaptor<Outbox> captor = ArgumentCaptor.forClass(Outbox.class);
+        verify(outboxRepository).save(captor.capture());
+        Outbox outbox = captor.getValue();
+        assertThat(outbox.getEventType()).isEqualTo(EventType.PAYMENT_CONFIRMED);
+        assertThat(outbox.getProcessed()).isFalse();
+        assertThat(JsonPath.parse(outbox.getPayload()).read("$.bookingId", Long.class))
+                .isEqualTo(bookingId);
     }
 
     private Payment providePayment(PaymentStatus status) {
