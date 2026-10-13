@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,6 +43,7 @@ public class SlotController {
                     description = "Teacher already has a slot starting at this time")
     })
     @PostMapping
+    @PreAuthorize("hasRole('TEACHER')")
     @ResponseStatus(HttpStatus.CREATED)
     public SlotResponseDto createSlot(@CurrentUserId UUID userId,
                                       @RequestBody @Valid CreateSlotDto createSlotDto) {
@@ -61,6 +63,7 @@ public class SlotController {
             @ApiResponse(responseCode = "409", description = "Slot has active bookings")
     })
     @DeleteMapping("/{slotId}")
+    @PreAuthorize("hasRole('TEACHER')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteSlot(@CurrentUserId UUID userId, @PathVariable Long slotId) {
         slotService.deleteSlot(userId, slotId);
@@ -75,6 +78,7 @@ public class SlotController {
             @ApiResponse(responseCode = "401", description = "Missing or invalid token")
     })
     @GetMapping
+    @PreAuthorize("hasAnyRole('STUDENT', 'TEACHER')")
     public List<SlotResponseDto> getAllSlots() {
         return slotService.getAllSlots();
     }
@@ -85,6 +89,7 @@ public class SlotController {
             @ApiResponse(responseCode = "401", description = "Missing or invalid token"),
             @ApiResponse(responseCode = "404", description = "Slot not found")
     })
+    @PreAuthorize("hasAnyRole('STUDENT', 'TEACHER')")
     @GetMapping("/{slotId}")
     public SlotResponseDto getSlotById(@PathVariable Long slotId) {
         return slotService.getSlotById(slotId);

@@ -33,6 +33,7 @@ public class Payment {
     @Column(name = "payment_type", nullable = false)
     private PaymentType type;
 
+    @Column(nullable = false, unique = true)
     private Long bookingId;
 
     @Column(name = "user_id", nullable = false)

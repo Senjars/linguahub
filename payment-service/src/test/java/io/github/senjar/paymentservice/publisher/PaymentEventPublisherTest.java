@@ -72,7 +72,8 @@ class PaymentEventPublisherTest {
         }
 
         @Test
-        @DisplayName("Should publish exactly the field booking-service reads, so renaming it breaks this test")
+        @DisplayName("Should publish exactly the field booking-service reads, "
+                + "so renaming it breaks this test")
         void publishPaymentConfirmed_bookingId_containsExactlyTheAgreedFields() {
             // WHEN
             paymentEventPublisher.publishPaymentConfirmed(BOOKING_ID);
@@ -84,7 +85,8 @@ class PaymentEventPublisherTest {
         }
 
         @Test
-        @DisplayName("Should use the booking id as the message key so events of one booking stay ordered")
+        @DisplayName("Should use the booking id as the message key "
+                + "so events of one booking stay ordered")
         void publishPaymentConfirmed_bookingId_usesBookingIdAsKey() {
             // WHEN
             paymentEventPublisher.publishPaymentConfirmed(BOOKING_ID);

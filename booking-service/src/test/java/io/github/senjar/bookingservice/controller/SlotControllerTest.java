@@ -29,6 +29,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -54,7 +55,6 @@ class SlotControllerTest {
     @MockitoBean
     private SlotService slotService;
 
-    // Required by the resource server configuration, tokens are injected by jwt() in the tests
     @MockitoBean
     private JwtDecoder jwtDecoder;
 
@@ -160,6 +160,21 @@ class SlotControllerTest {
         }
 
         @Test
+        @DisplayName("Should return 403 Forbidden when the user is a student")
+        void createSlot_studentRole_returnsForbidden() throws Exception {
+            // GIVEN
+            CreateSlotDto request = provideCreateSlotDto();
+
+            // WHEN & THEN
+            mockMvc.perform(post(BASE_URL)
+                            .with(provideJwtWithRole("ROLE_STUDENT"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(jsonMapper.writeValueAsString(request)))
+                    .andExpect(status().isForbidden());
+            verifyNoInteractions(slotService);
+        }
+
+        @Test
         @DisplayName("Should return 401 Unauthorized when there is no token")
         void createSlot_noToken_returnsUnauthorized() throws Exception {
             // GIVEN
@@ -224,6 +239,16 @@ class SlotControllerTest {
         }
 
         @Test
+        @DisplayName("Should return 403 Forbidden when the user is a student")
+        void deleteSlot_studentRole_returnsForbidden() throws Exception {
+            // WHEN & THEN
+            mockMvc.perform(delete(BASE_URL + "/{slotId}", SLOT_ID)
+                            .with(provideJwtWithRole("ROLE_STUDENT")))
+                    .andExpect(status().isForbidden());
+            verifyNoInteractions(slotService);
+        }
+
+        @Test
         @DisplayName("Should return 401 Unauthorized when there is no token")
         void deleteSlot_noToken_returnsUnauthorized() throws Exception {
             // WHEN & THEN
@@ -260,6 +285,26 @@ class SlotControllerTest {
             mockMvc.perform(get(BASE_URL).with(provideJwt()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.length()").value(0));
+        }
+
+        @Test
+        @DisplayName("Should return 200 OK for a student")
+        void getAllSlots_studentRole_returnsOk() throws Exception {
+            // GIVEN
+            when(slotService.getAllSlots()).thenReturn(List.of());
+
+            // WHEN & THEN
+            mockMvc.perform(get(BASE_URL).with(provideJwtWithRole("ROLE_STUDENT")))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("Should return 403 Forbidden when the user has no known role")
+        void getAllSlots_unknownRole_returnsForbidden() throws Exception {
+            // WHEN & THEN
+            mockMvc.perform(get(BASE_URL).with(provideJwtWithRole("ROLE_GUEST")))
+                    .andExpect(status().isForbidden());
+            verifyNoInteractions(slotService);
         }
 
         @Test
@@ -311,6 +356,28 @@ class SlotControllerTest {
         }
 
         @Test
+        @DisplayName("Should return 200 OK for a student")
+        void getSlotById_studentRole_returnsOk() throws Exception {
+            // GIVEN
+            when(slotService.getSlotById(SLOT_ID)).thenReturn(provideSlotResponse());
+
+            // WHEN & THEN
+            mockMvc.perform(get(BASE_URL + "/{slotId}", SLOT_ID)
+                            .with(provideJwtWithRole("ROLE_STUDENT")))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("Should return 403 Forbidden when the user has no known role")
+        void getSlotById_unknownRole_returnsForbidden() throws Exception {
+            // WHEN & THEN
+            mockMvc.perform(get(BASE_URL + "/{slotId}", SLOT_ID)
+                            .with(provideJwtWithRole("ROLE_GUEST")))
+                    .andExpect(status().isForbidden());
+            verifyNoInteractions(slotService);
+        }
+
+        @Test
         @DisplayName("Should return 401 Unauthorized when there is no token")
         void getSlotById_noToken_returnsUnauthorized() throws Exception {
             // WHEN & THEN
@@ -321,7 +388,13 @@ class SlotControllerTest {
     }
 
     private RequestPostProcessor provideJwt() {
-        return jwt().jwt(token -> token.subject(USER_ID.toString()));
+        return provideJwtWithRole("ROLE_TEACHER");
+    }
+
+    private RequestPostProcessor provideJwtWithRole(String role) {
+        return jwt()
+                .authorities(new SimpleGrantedAuthority(role))
+                .jwt(token -> token.subject(USER_ID.toString()));
     }
 
     private CreateSlotDto provideCreateSlotDto() {

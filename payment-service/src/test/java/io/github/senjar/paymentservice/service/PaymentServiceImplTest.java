@@ -17,7 +17,10 @@ import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
 import com.stripe.model.checkout.Session;
 import io.github.senjar.paymentservice.dto.PaymentResponseDto;
-import io.github.senjar.paymentservice.exception.PaymentException;
+import io.github.senjar.paymentservice.exception.InvalidWebhookException;
+import io.github.senjar.paymentservice.exception.PaymentAlreadyPaidException;
+import io.github.senjar.paymentservice.exception.PaymentNotPaidException;
+import io.github.senjar.paymentservice.exception.StripeSessionException;
 import io.github.senjar.paymentservice.mapper.PaymentMapper;
 import io.github.senjar.paymentservice.model.outbox.EventType;
 import io.github.senjar.paymentservice.model.outbox.Outbox;
@@ -142,14 +145,15 @@ public class PaymentServiceImplTest {
 
             // WHEN / THEN
             assertThatThrownBy(() -> paymentService.createSingleLessonPayment(USER_ID, BOOKING_ID))
-                    .isInstanceOf(PaymentException.class)
+                    .isInstanceOf(PaymentAlreadyPaidException.class)
                     .hasMessageContaining("already paid");
             verifyNoInteractions(stripeProvider);
         }
 
         @Test
         @DisplayName("Should reuse the FAILED payment record and open a new Stripe session")
-        void createSingleLessonPayment_existingFailed_reusesRecordWithNewSession() throws Exception {
+        void createSingleLessonPayment_existingFailed_reusesRecordWithNewSession()
+                throws Exception {
             // GIVEN
             Payment existing = providePayment(PaymentStatus.FAILED);
             existing.setSessionId("cs_old");
@@ -182,7 +186,7 @@ public class PaymentServiceImplTest {
 
             // WHEN / THEN
             assertThatThrownBy(() -> paymentService.createSingleLessonPayment(USER_ID, BOOKING_ID))
-                    .isInstanceOf(PaymentException.class)
+                    .isInstanceOf(StripeSessionException.class)
                     .hasMessageContaining("Error creating Stripe payment session");
             verify(paymentRepository, never()).save(any(Payment.class));
         }
@@ -252,7 +256,8 @@ public class PaymentServiceImplTest {
         }
 
         @Test
-        @DisplayName("Should be idempotent: an already PAID payment is returned without Stripe or outbox")
+        @DisplayName("Should be idempotent: an already PAID payment "
+                + "is returned without Stripe or outbox")
         void fulfillPayment_alreadyPaid_doesNothing() {
             // GIVEN
             Payment payment = providePayment(PaymentStatus.PAID);
@@ -300,7 +305,8 @@ public class PaymentServiceImplTest {
         }
 
         @Test
-        @DisplayName("Should throw PaymentException and keep PENDING when Stripe says it is not paid")
+        @DisplayName("Should throw PaymentException and keep PENDING "
+                + "when Stripe says it is not paid")
         void fulfillPayment_notPaidInStripe_throwsPaymentException() {
             // GIVEN
             Payment payment = providePayment(PaymentStatus.PENDING);
@@ -310,7 +316,7 @@ public class PaymentServiceImplTest {
 
             // WHEN / THEN
             assertThatThrownBy(() -> paymentService.fulfillPayment(SESSION_ID))
-                    .isInstanceOf(PaymentException.class)
+                    .isInstanceOf(PaymentNotPaidException.class)
                     .hasMessageContaining("not paid yet");
             assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDING);
             verify(paymentRepository, never()).save(any(Payment.class));
@@ -403,13 +409,14 @@ public class PaymentServiceImplTest {
 
             // WHEN / THEN
             assertThatThrownBy(() -> paymentService.processWebhook(PAYLOAD, SIGNATURE))
-                    .isInstanceOf(PaymentException.class)
+                    .isInstanceOf(InvalidWebhookException.class)
                     .hasMessageContaining("Empty session in webhook event");
             verifyNoInteractions(outboxRepository);
         }
 
         @Test
-        @DisplayName("Should ignore a webhook for a session unknown locally so Stripe stops retrying")
+        @DisplayName("Should ignore a webhook for a session "
+                + "unknown locally so Stripe stops retrying")
         void processWebhook_unknownLocalSession_isIgnored() throws Exception {
             // GIVEN
             Session session = provideSession("paid");
@@ -450,7 +457,7 @@ public class PaymentServiceImplTest {
 
             // WHEN / THEN
             assertThatThrownBy(() -> paymentService.processWebhook(PAYLOAD, SIGNATURE))
-                    .isInstanceOf(PaymentException.class)
+                    .isInstanceOf(InvalidWebhookException.class)
                     .hasMessageContaining("Webhook processing failed");
             verifyNoInteractions(paymentRepository, outboxRepository);
         }

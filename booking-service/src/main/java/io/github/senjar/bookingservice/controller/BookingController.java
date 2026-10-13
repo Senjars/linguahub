@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -45,6 +46,7 @@ public class BookingController {
             @ApiResponse(responseCode = "409", description = "Slot is full or does not exist")
     })
     @PostMapping
+    @PreAuthorize("hasRole('STUDENT')")
     @ResponseStatus(HttpStatus.CREATED)
     public BookingResponseDto bookLesson(
             @RequestBody @Valid BookingRequestDto bookingRequestDto,
@@ -65,6 +67,7 @@ public class BookingController {
                     description = "Booking not found or belongs to another student")
     })
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('STUDENT')")
     public BookingResponseDto getBookingById(
             @PathVariable Long id,
             @CurrentUserId UUID userId) {
@@ -81,6 +84,7 @@ public class BookingController {
             @ApiResponse(responseCode = "401", description = "Missing or invalid token")
     })
     @GetMapping
+    @PreAuthorize("hasRole('STUDENT')")
     public List<BookingResponseDto> getAllBookingsForStudent(
             @CurrentUserId UUID userId) {
         return bookingService.getBookingsForStudent(userId);

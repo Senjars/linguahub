@@ -46,7 +46,8 @@ public class BookingServiceImpl implements BookingService {
                                             UUID userId, String email) {
         Long slotId = bookingRequestDto.slotId();
 
-        if (bookingRepository.existsByStudentIdAndSlotIdAndStatusIn(userId, slotId, ACTIVE_STATUSES)) {
+        if (bookingRepository.existsByStudentIdAndSlotIdAndStatusIn(
+                userId, slotId, ACTIVE_STATUSES)) {
             throw new DuplicateBookingException(
                     "Student already has an active booking for slot " + slotId);
         }
@@ -91,7 +92,6 @@ public class BookingServiceImpl implements BookingService {
 
         Slot slot = slotRepository.findById(booking.getSlotId())
                 .orElseThrow(() -> new EntityNotFoundException("Slot not found"));
-
         booking.setStatus(Status.CONFIRMED);
         bookingRepository.save(booking);
         log.info("Booking {} confirmed", bookingId);

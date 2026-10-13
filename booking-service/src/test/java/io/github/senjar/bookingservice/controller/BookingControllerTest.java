@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.github.senjar.bookingservice.config.SecurityConfig;
 import io.github.senjar.bookingservice.dto.booking.BookingRequestDto;
 import io.github.senjar.bookingservice.dto.booking.BookingResponseDto;
+import io.github.senjar.bookingservice.exception.DuplicateBookingException;
 import io.github.senjar.bookingservice.exception.EntityNotFoundException;
 import io.github.senjar.bookingservice.exception.SlotFullException;
 import io.github.senjar.bookingservice.model.booking.Status;
@@ -25,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -113,6 +115,40 @@ class BookingControllerTest {
         }
 
         @Test
+        @DisplayName("Should return 409 Conflict with the reason "
+                + "when the student already booked the slot")
+        void bookLesson_duplicateBooking_returnsConflictWithDetail() throws Exception {
+            // GIVEN
+            BookingRequestDto request = new BookingRequestDto(SLOT_ID);
+            when(bookingService.createBooking(request, USER_ID, EMAIL))
+                    .thenThrow(
+                            new DuplicateBookingException("Student already has an active booking"));
+
+            // WHEN & THEN
+            mockMvc.perform(post(BASE_URL)
+                            .with(provideJwt())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(jsonMapper.writeValueAsString(request)))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.detail").value("Student already has an active booking"));
+        }
+
+        @Test
+        @DisplayName("Should return 403 Forbidden when the user is a teacher")
+        void bookLesson_teacherRole_returnsForbidden() throws Exception {
+            // GIVEN
+            BookingRequestDto request = new BookingRequestDto(SLOT_ID);
+
+            // WHEN & THEN
+            mockMvc.perform(post(BASE_URL)
+                            .with(provideJwtWithRole("ROLE_TEACHER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(jsonMapper.writeValueAsString(request)))
+                    .andExpect(status().isForbidden());
+            verifyNoInteractions(bookingService);
+        }
+
+        @Test
         @DisplayName("Should return 401 Unauthorized when there is no token")
         void bookLesson_noToken_returnsUnauthorized() throws Exception {
             // GIVEN
@@ -147,8 +183,8 @@ class BookingControllerTest {
         }
 
         @Test
-        @DisplayName("Should return 404 Not Found when the booking does "
-                + "not exist or belongs to someone else")
+        @DisplayName("Should return 404 Not Found "
+                + "when the booking does not exist or belongs to someone else")
         void getBookingById_notOwned_returnsNotFound() throws Exception {
             // GIVEN
             when(bookingService.findBooking(BOOKING_ID, USER_ID))
@@ -157,6 +193,16 @@ class BookingControllerTest {
             // WHEN & THEN
             mockMvc.perform(get(BASE_URL + "/{id}", BOOKING_ID).with(provideJwt()))
                     .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("Should return 403 Forbidden when the user is a teacher")
+        void getBookingById_teacherRole_returnsForbidden() throws Exception {
+            // WHEN & THEN
+            mockMvc.perform(get(BASE_URL + "/{id}", BOOKING_ID)
+                            .with(provideJwtWithRole("ROLE_TEACHER")))
+                    .andExpect(status().isForbidden());
+            verifyNoInteractions(bookingService);
         }
 
         @Test
@@ -200,6 +246,15 @@ class BookingControllerTest {
         }
 
         @Test
+        @DisplayName("Should return 403 Forbidden when the user is a teacher")
+        void getAllBookingsForStudent_teacherRole_returnsForbidden() throws Exception {
+            // WHEN & THEN
+            mockMvc.perform(get(BASE_URL).with(provideJwtWithRole("ROLE_TEACHER")))
+                    .andExpect(status().isForbidden());
+            verifyNoInteractions(bookingService);
+        }
+
+        @Test
         @DisplayName("Should return 401 Unauthorized when there is no token")
         void getAllBookingsForStudent_noToken_returnsUnauthorized() throws Exception {
             // WHEN & THEN
@@ -210,9 +265,15 @@ class BookingControllerTest {
     }
 
     private RequestPostProcessor provideJwt() {
-        return jwt().jwt(token -> token
-                .subject(USER_ID.toString())
-                .claim("email", EMAIL));
+        return provideJwtWithRole("ROLE_STUDENT");
+    }
+
+    private RequestPostProcessor provideJwtWithRole(String role) {
+        return jwt()
+                .authorities(new SimpleGrantedAuthority(role))
+                .jwt(token -> token
+                        .subject(USER_ID.toString())
+                        .claim("email", EMAIL));
     }
 
     private BookingResponseDto provideBookingResponse(String sessionUrl) {
