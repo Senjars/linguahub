@@ -12,7 +12,7 @@ spring:
           jwk-set-uri: http://keycloak:8080/realms/linguahub/protocol/openid-connect/certs
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
   http:
     clients:

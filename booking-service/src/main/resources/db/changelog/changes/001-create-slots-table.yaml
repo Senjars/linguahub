@@ -1,0 +1,64 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-slots-table
+      author: senjar
+      changes:
+        - createTable:
+            tableName: slots
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_slots
+              - column:
+                  name: teacher_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_time
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_time
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: capacity
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: booked_count
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 001-add-slots-constraints
+      author: senjar
+      changes:
+        - addUniqueConstraint:
+            tableName: slots
+            columnNames: teacher_id, start_time
+            constraintName: uq_slots_teacher_start_time
+        - sql:
+            dbms: postgresql
+            sql: "ALTER TABLE slots ADD CONSTRAINT chk_slots_capacity_positive CHECK (capacity > 0)"
+        - sql:
+            dbms: postgresql
+            sql: "ALTER TABLE slots ADD CONSTRAINT chk_slots_booked_count_in_range CHECK (booked_count >= 0 AND booked_count <= capacity)"
+      rollback:
+        - sql:
+            sql: "ALTER TABLE slots DROP CONSTRAINT chk_slots_booked_count_in_range"
+        - sql:
+            sql: "ALTER TABLE slots DROP CONSTRAINT chk_slots_capacity_positive"
+        - dropUniqueConstraint:
+            tableName: slots
+            constraintName: uq_slots_teacher_start_time
