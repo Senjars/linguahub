@@ -14,6 +14,10 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+  http:
+    clients:
+      connect-timeout: 2s
+      read-timeout: 8s
 
 eureka:
   client:

@@ -9,8 +9,9 @@ import org.springframework.web.client.RestClient;
 public class KeycloakRestClientConfig {
 
     @Bean
-    public RestClient keycloakRestClient(@Value("${keycloak.base-url}") String baseUrl) {
-        return RestClient.builder()
+    public RestClient keycloakRestClient(RestClient.Builder builder,
+                                         @Value("${keycloak.base-url}") String baseUrl) {
+        return builder
                 .baseUrl(baseUrl)
                 .build();
     }

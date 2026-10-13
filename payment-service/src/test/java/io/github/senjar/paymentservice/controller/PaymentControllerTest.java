@@ -46,7 +46,8 @@ class PaymentControllerTest {
     private static final UUID USER_ID = UUID.randomUUID();
     private static final Long BOOKING_ID = 10L;
     private static final String SESSION_ID = "cs_test_123";
-    private static final String PAYLOAD = "{\"id\":\"evt_1\",\"type\":\"checkout.session.completed\"}";
+    private static final String PAYLOAD =
+            "{\"id\":\"evt_1\",\"type\":\"checkout.session.completed\"}";
     private static final String SIGNATURE = "t=1,v1=abc";
     private static final String CANCEL_MESSAGE = "Payment cancelled successfully.";
 
@@ -164,7 +165,8 @@ class PaymentControllerTest {
         }
 
         @Test
-        @DisplayName("Should return 403 Forbidden when the payment of the booking belongs to another user")
+        @DisplayName("Should return 403 Forbidden "
+                + "when the payment of the booking belongs to another user")
         void createLessonPayment_paymentOfAnotherUser_returnsForbidden() throws Exception {
             // GIVEN
             when(paymentService.createSingleLessonPayment(USER_ID, BOOKING_ID))

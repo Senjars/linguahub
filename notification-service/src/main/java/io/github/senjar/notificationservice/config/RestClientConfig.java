@@ -8,8 +8,8 @@ import org.springframework.web.client.RestClient;
 public class RestClientConfig {
 
     @Bean
-    public RestClient resendRestClient() {
-        return RestClient.builder()
+    public RestClient resendRestClient(RestClient.Builder builder) {
+        return builder
                 .baseUrl("https://api.resend.com")
                 .build();
     }

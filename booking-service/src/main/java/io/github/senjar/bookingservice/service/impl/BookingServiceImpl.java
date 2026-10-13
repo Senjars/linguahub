@@ -90,12 +90,12 @@ public class BookingServiceImpl implements BookingService {
             return;
         }
 
-        Slot slot = slotRepository.findById(booking.getSlotId())
-                .orElseThrow(() -> new EntityNotFoundException("Slot not found"));
         booking.setStatus(Status.CONFIRMED);
         bookingRepository.save(booking);
-        log.info("Booking {} confirmed", bookingId);
+        Slot slot = slotRepository.findById(booking.getSlotId())
+                .orElseThrow(() -> new EntityNotFoundException("Slot not found"));
 
+        log.info("Booking {} confirmed", bookingId);
         saveBookingConfirmedOutbox(booking, slot);
     }
 

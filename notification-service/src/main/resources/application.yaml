@@ -16,7 +16,10 @@ spring:
         spring.json.use.type.headers: false
         spring.json.value.default.type: io.github.senjar.notificationservice.event.BookingConfirmedEvent
         spring.json.trusted.packages: "*"
-
+  http:
+    clients:
+      connect-timeout: 2s
+      read-timeout: 8s
 resend:
   api-key: ${RESEND_API_KEY}
   from-address: onboarding@resend.dev
