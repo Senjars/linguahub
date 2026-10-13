@@ -16,7 +16,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.github.senjar.paymentservice.config.SecurityConfig;
 import io.github.senjar.paymentservice.dto.PaymentResponseDto;
+import io.github.senjar.paymentservice.exception.PaymentAlreadyPaidException;
 import io.github.senjar.paymentservice.service.PaymentService;
+import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -26,6 +28,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
@@ -42,7 +45,8 @@ class PaymentControllerTest {
     private static final UUID USER_ID = UUID.randomUUID();
     private static final Long BOOKING_ID = 10L;
     private static final String SESSION_ID = "cs_test_123";
-    private static final String PAYLOAD = "{\"id\":\"evt_1\",\"type\":\"checkout.session.completed\"}";
+    private static final String PAYLOAD =
+            "{\"id\":\"evt_1\",\"type\":\"checkout.session.completed\"}";
     private static final String SIGNATURE = "t=1,v1=abc";
     private static final String CANCEL_MESSAGE = "Payment cancelled successfully.";
 
@@ -52,7 +56,6 @@ class PaymentControllerTest {
     @MockitoBean
     private PaymentService paymentService;
 
-    // Required by the resource server configuration, tokens are injected by jwt() in the tests
     @MockitoBean
     private JwtDecoder jwtDecoder;
 
@@ -127,6 +130,39 @@ class PaymentControllerTest {
         }
 
         @Test
+        @DisplayName("Should return 409 Conflict without database details "
+                + "when a payment for the booking already exists")
+        void createLessonPayment_duplicatePaymentInDatabase_returnsConflict() throws Exception {
+            // GIVEN
+            when(paymentService.createSingleLessonPayment(USER_ID, BOOKING_ID))
+                    .thenThrow(new DataIntegrityViolationException(
+                            "duplicate key value violates unique constraint"));
+
+            // WHEN & THEN
+            mockMvc.perform(post(BASE_URL + "/single-lesson")
+                            .with(provideJwt())
+                            .param("bookingId", BOOKING_ID.toString()))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.detail")
+                            .value("Payment conflicts with an existing payment for this booking"));
+        }
+
+        @Test
+        @DisplayName("Should return 409 Conflict when the booking is already paid")
+        void createLessonPayment_alreadyPaid_returnsConflict() throws Exception {
+            // GIVEN
+            when(paymentService.createSingleLessonPayment(USER_ID, BOOKING_ID))
+                    .thenThrow(new PaymentAlreadyPaidException("already paid"));
+
+            // WHEN & THEN
+            mockMvc.perform(post(BASE_URL + "/single-lesson")
+                            .with(provideJwt())
+                            .param("bookingId", BOOKING_ID.toString()))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.detail").value("already paid"));
+        }
+
+        @Test
         @DisplayName("Should return 400 Bad Request when bookingId is missing")
         void createLessonPayment_missingBookingId_returnsBadRequest() throws Exception {
             // WHEN & THEN
@@ -173,6 +209,18 @@ class PaymentControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
             verify(paymentService).fulfillPayment(SESSION_ID);
+        }
+
+        @Test
+        @DisplayName("Should return 404 Not Found when the session is unknown")
+        void fulfillPayment_unknownSession_returnsNotFound() throws Exception {
+            // GIVEN
+            when(paymentService.fulfillPayment(SESSION_ID))
+                    .thenThrow(new EntityNotFoundException("Payment not found"));
+
+            // WHEN & THEN
+            mockMvc.perform(get(BASE_URL + "/success").param("sessionId", SESSION_ID))
+                    .andExpect(status().isNotFound());
         }
 
         @Test

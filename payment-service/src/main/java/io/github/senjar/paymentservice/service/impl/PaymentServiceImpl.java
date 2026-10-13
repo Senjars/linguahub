@@ -6,7 +6,10 @@ import com.stripe.model.EventDataObjectDeserializer;
 import com.stripe.model.checkout.Session;
 import io.github.senjar.paymentservice.dto.PaymentResponseDto;
 import io.github.senjar.paymentservice.event.PaymentConfirmedEvent;
-import io.github.senjar.paymentservice.exception.PaymentException;
+import io.github.senjar.paymentservice.exception.InvalidWebhookException;
+import io.github.senjar.paymentservice.exception.PaymentAlreadyPaidException;
+import io.github.senjar.paymentservice.exception.PaymentNotPaidException;
+import io.github.senjar.paymentservice.exception.StripeSessionException;
 import io.github.senjar.paymentservice.mapper.PaymentMapper;
 import io.github.senjar.paymentservice.model.outbox.EventType;
 import io.github.senjar.paymentservice.model.outbox.Outbox;
@@ -50,7 +53,7 @@ public class PaymentServiceImpl implements PaymentService {
             Payment payment = existing.get();
 
             if (payment.getStatus() == PaymentStatus.PAID) {
-                throw new PaymentException("Payment for booking with id: "
+                throw new PaymentAlreadyPaidException("Payment for booking with id: "
                         + bookingId + " is already paid.");
             }
 
@@ -99,7 +102,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         if (!"paid".equals(session.getPaymentStatus())) {
-            throw new PaymentException("Payment with session ID: "
+            throw new PaymentNotPaidException("Payment with session ID: "
                     + sessionId + " is not paid yet in Stripe");
         }
 
@@ -131,7 +134,8 @@ public class PaymentServiceImpl implements PaymentService {
                 }
             }
         } catch (StripeException e) {
-            throw new PaymentException("Webhook processing failed: " + e.getMessage());
+            throw new InvalidWebhookException(
+                    "Webhook processing failed: " + e.getMessage());
         }
     }
 
@@ -166,7 +170,7 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             return (Session) deserializer.deserializeUnsafe();
         } catch (Exception e) {
-            throw new PaymentException("Empty session in webhook event");
+            throw new InvalidWebhookException("Empty session in webhook event");
         }
     }
 
@@ -175,7 +179,8 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             return stripeProvider.createSession(userId, bookingId, amount, description);
         } catch (StripeException e) {
-            throw new PaymentException("Error creating Stripe payment session: " + e.getMessage());
+            throw new StripeSessionException(
+                    "Error creating Stripe payment session: " + e.getMessage());
         }
     }
 }

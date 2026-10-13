@@ -145,7 +145,8 @@ public class BookingServiceImplTest {
         void createBooking_studentAlreadyBookedSlot_throwsDuplicateBookingException() {
             // GIVEN
             BookingRequestDto request = provideBookingRequest();
-            when(bookingRepository.existsByStudentIdAndSlotIdAndStatusIn(eq(USER_ID), eq(SLOT_ID), any()))
+            when(bookingRepository.existsByStudentIdAndSlotIdAndStatusIn(
+                    eq(USER_ID), eq(SLOT_ID), any()))
                     .thenReturn(true);
 
             // WHEN / THEN
@@ -186,7 +187,8 @@ public class BookingServiceImplTest {
     class ConfirmBooking {
 
         @Test
-        @DisplayName("Should set CONFIRMED and store an unprocessed BOOKING_CONFIRMED outbox message")
+        @DisplayName("Should set CONFIRMED "
+                + "and store an unprocessed BOOKING_CONFIRMED outbox message")
         void confirmBooking_pendingBooking_setsConfirmedAndStoresOutboxMessage() {
             // GIVEN
             Booking booking = provideBooking(Status.PENDING);
@@ -221,7 +223,8 @@ public class BookingServiceImplTest {
             ArgumentCaptor<Outbox> captor = ArgumentCaptor.forClass(Outbox.class);
             verify(outboxRepository).save(captor.capture());
             BookingConfirmedEvent restored =
-                    objectMapper.readValue(captor.getValue().getPayload(), BookingConfirmedEvent.class);
+                    objectMapper.readValue(captor.getValue().getPayload(),
+                            BookingConfirmedEvent.class);
             assertThat(restored)
                     .isEqualTo(new BookingConfirmedEvent(BOOKING_ID, SLOT_ID, EMAIL, START, END));
         }
@@ -259,14 +262,16 @@ public class BookingServiceImplTest {
         }
 
         @Test
-        @DisplayName("Should neither confirm nor publish when the booking is no longer waiting for payment")
+        @DisplayName("Should neither confirm nor publish when "
+                + "the booking is no longer waiting for payment")
         void confirmBooking_bookingInOtherStatus_doesNotConfirmNorStoreOutboxMessage() {
             // GIVEN
             Status other = Arrays.stream(Status.values())
                     .filter(status -> status != Status.PENDING && status != Status.CONFIRMED)
                     .findFirst()
                     .orElse(null);
-            Assumptions.assumeTrue(other != null, "Status has no value besides PENDING and CONFIRMED");
+            Assumptions.assumeTrue(other != null,
+                    "Status has no value besides PENDING and CONFIRMED");
             Booking booking = provideBooking(other);
             when(bookingRepository.findById(BOOKING_ID)).thenReturn(Optional.of(booking));
 

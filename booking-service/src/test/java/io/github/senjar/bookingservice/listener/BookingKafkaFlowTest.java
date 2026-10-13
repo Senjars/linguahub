@@ -80,7 +80,8 @@ class BookingKafkaFlowTest {
     class PaymentConfirmedMessage {
 
         @Test
-        @DisplayName("Should confirm the booking and publish booking-confirmed with the lesson data")
+        @DisplayName("Should confirm the booking "
+                + "and publish booking-confirmed with the lesson data")
         void paymentConfirmed_pendingBooking_confirmsBookingAndPublishesEvent() throws Exception {
             // GIVEN
             Booking booking = saveBookingWithSlot();

@@ -85,7 +85,8 @@ class OutboxSchedulerTest {
             when(outboxRepository.findTop50ByProcessedFalseAndRetryCountLessThan(RETRY_LIMIT))
                     .thenReturn(List.of(message));
             doThrow(new IllegalStateException("Kafka unavailable"))
-                    .when(bookingEventPublisher).publishBookingConfirmed(any(BookingConfirmedEvent.class));
+                    .when(bookingEventPublisher)
+                    .publishBookingConfirmed(any(BookingConfirmedEvent.class));
 
             // WHEN
             outboxScheduler.processOutboxMessages();

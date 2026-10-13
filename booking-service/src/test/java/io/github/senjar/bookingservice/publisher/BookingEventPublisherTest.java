@@ -65,7 +65,8 @@ class BookingEventPublisherTest {
     class PublishBookingConfirmed {
 
         @Test
-        @DisplayName("Should publish the event under the booking id with the lesson data as ISO JSON")
+        @DisplayName("Should publish the event under the booking id "
+                + "with the lesson data as ISO JSON")
         void publishBookingConfirmed_validEvent_publishesJsonKeyedByBookingId() {
             // GIVEN
             BookingConfirmedEvent event = provideEvent();
