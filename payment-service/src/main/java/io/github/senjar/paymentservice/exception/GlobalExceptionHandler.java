@@ -17,6 +17,11 @@ public class GlobalExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
+    @ExceptionHandler(PaymentAccessDeniedException.class)
+    public ProblemDetail handleAccessDenied(PaymentAccessDeniedException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.getMessage());
+    }
+
     @ExceptionHandler({
             PaymentAlreadyPaidException.class,
             PaymentNotPaidException.class})

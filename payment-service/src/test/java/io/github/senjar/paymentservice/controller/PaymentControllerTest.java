@@ -16,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.github.senjar.paymentservice.config.SecurityConfig;
 import io.github.senjar.paymentservice.dto.PaymentResponseDto;
+import io.github.senjar.paymentservice.exception.PaymentAccessDeniedException;
 import io.github.senjar.paymentservice.exception.PaymentAlreadyPaidException;
 import io.github.senjar.paymentservice.service.PaymentService;
 import jakarta.persistence.EntityNotFoundException;
@@ -45,8 +46,7 @@ class PaymentControllerTest {
     private static final UUID USER_ID = UUID.randomUUID();
     private static final Long BOOKING_ID = 10L;
     private static final String SESSION_ID = "cs_test_123";
-    private static final String PAYLOAD =
-            "{\"id\":\"evt_1\",\"type\":\"checkout.session.completed\"}";
+    private static final String PAYLOAD = "{\"id\":\"evt_1\",\"type\":\"checkout.session.completed\"}";
     private static final String SIGNATURE = "t=1,v1=abc";
     private static final String CANCEL_MESSAGE = "Payment cancelled successfully.";
 
@@ -130,8 +130,8 @@ class PaymentControllerTest {
         }
 
         @Test
-        @DisplayName("Should return 409 Conflict without database details "
-                + "when a payment for the booking already exists")
+        @DisplayName("Should return 409 Conflict "
+                + "without database details when a payment for the booking already exists")
         void createLessonPayment_duplicatePaymentInDatabase_returnsConflict() throws Exception {
             // GIVEN
             when(paymentService.createSingleLessonPayment(USER_ID, BOOKING_ID))
@@ -144,7 +144,8 @@ class PaymentControllerTest {
                             .param("bookingId", BOOKING_ID.toString()))
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.detail")
-                            .value("Payment conflicts with an existing payment for this booking"));
+                            .value("Payment conflicts with "
+                                    + "an existing payment for this booking"));
         }
 
         @Test
@@ -160,6 +161,20 @@ class PaymentControllerTest {
                             .param("bookingId", BOOKING_ID.toString()))
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.detail").value("already paid"));
+        }
+
+        @Test
+        @DisplayName("Should return 403 Forbidden when the payment of the booking belongs to another user")
+        void createLessonPayment_paymentOfAnotherUser_returnsForbidden() throws Exception {
+            // GIVEN
+            when(paymentService.createSingleLessonPayment(USER_ID, BOOKING_ID))
+                    .thenThrow(new PaymentAccessDeniedException("belongs to another user"));
+
+            // WHEN & THEN
+            mockMvc.perform(post(BASE_URL + "/single-lesson")
+                            .with(provideJwt())
+                            .param("bookingId", BOOKING_ID.toString()))
+                    .andExpect(status().isForbidden());
         }
 
         @Test
@@ -205,7 +220,8 @@ class PaymentControllerTest {
             when(paymentService.fulfillPayment(SESSION_ID)).thenReturn(response);
 
             // WHEN & THEN
-            mockMvc.perform(get(BASE_URL + "/success").param("sessionId", SESSION_ID))
+            mockMvc.perform(get(BASE_URL + "/success")
+                            .param("sessionId", SESSION_ID))
                     .andExpect(status().isOk())
                     .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
             verify(paymentService).fulfillPayment(SESSION_ID);
@@ -219,7 +235,8 @@ class PaymentControllerTest {
                     .thenThrow(new EntityNotFoundException("Payment not found"));
 
             // WHEN & THEN
-            mockMvc.perform(get(BASE_URL + "/success").param("sessionId", SESSION_ID))
+            mockMvc.perform(get(BASE_URL + "/success")
+                            .param("sessionId", SESSION_ID))
                     .andExpect(status().isNotFound());
         }
 

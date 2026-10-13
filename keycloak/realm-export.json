@@ -49,6 +49,20 @@
   "roles": {
     "realm": [
       {
+        "name": "STUDENT",
+        "description": "Student who books and pays for lessons",
+        "composite": false,
+        "clientRole": false,
+        "attributes": {}
+      },
+      {
+        "name": "TEACHER",
+        "description": "Teacher who publishes lesson slots",
+        "composite": false,
+        "clientRole": false,
+        "attributes": {}
+      },
+      {
         "id": "c9836c85-dc04-483a-91cb-159aaf55c76f",
         "name": "uma_authorization",
         "description": "${role_uma_authorization}",
@@ -515,7 +529,8 @@
       ],
       "clientRoles": {
         "realm-management": [
-          "manage-users"
+          "manage-users",
+          "view-realm"
         ]
       },
       "notBefore": 0,

@@ -53,10 +53,45 @@ public class KeycloakAdminService {
 
         String location = response.getHeaders().getFirst(HttpHeaders.LOCATION);
         if (location == null) {
-            throw new KeycloakAdminException("Keycloak did not return a "
-                    + "Location header for the created user");
+            throw new KeycloakAdminException(
+                    "Keycloak did not return a Location header for the created user");
         }
         return location.substring(location.lastIndexOf('/') + 1);
+    }
+
+    public void assignRealmRole(String userId, String roleName) {
+        String token = getAdminToken();
+
+        Map<?, ?> role = keycloakRestClient.get()
+                .uri("/admin/realms/{realm}/roles/{role}", realm, roleName)
+                .header("Authorization", "Bearer " + token)
+                .retrieve()
+                .body(Map.class);
+
+        if (role == null || role.get("id") == null) {
+            throw new KeycloakAdminException("Realm role " + roleName + " not found in Keycloak");
+        }
+
+        Object roleId = role.get("id");
+        Object name = role.get("name");
+
+        keycloakRestClient.post()
+                .uri("/admin/realms/{realm}/users/{userId}/role-mappings/realm", realm, userId)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(List.of(Map.of("id", roleId, "name", name)))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    public void deleteUser(String userId) {
+        String token = getAdminToken();
+
+        keycloakRestClient.delete()
+                .uri("/admin/realms/{realm}/users/{userId}", realm, userId)
+                .header("Authorization", "Bearer " + token)
+                .retrieve()
+                .toBodilessEntity();
     }
 
     private String getAdminToken() {
