@@ -18,6 +18,7 @@ import com.stripe.model.EventDataObjectDeserializer;
 import com.stripe.model.checkout.Session;
 import io.github.senjar.paymentservice.dto.PaymentResponseDto;
 import io.github.senjar.paymentservice.exception.InvalidWebhookException;
+import io.github.senjar.paymentservice.exception.PaymentAccessDeniedException;
 import io.github.senjar.paymentservice.exception.PaymentAlreadyPaidException;
 import io.github.senjar.paymentservice.exception.PaymentNotPaidException;
 import io.github.senjar.paymentservice.exception.StripeSessionException;
@@ -137,6 +138,50 @@ public class PaymentServiceImplTest {
         }
 
         @Test
+        @DisplayName("Should refuse a PENDING payment of another user without leaking its link")
+        void createSingleLessonPayment_pendingPaymentOfAnotherUser_throwsAccessDenied() {
+            // GIVEN
+            Payment existing = providePayment(PaymentStatus.PENDING);
+            when(paymentRepository.findByBookingId(BOOKING_ID)).thenReturn(Optional.of(existing));
+
+            // WHEN / THEN
+            assertThatThrownBy(
+                    () -> paymentService.createSingleLessonPayment(UUID.randomUUID(), BOOKING_ID))
+                    .isInstanceOf(PaymentAccessDeniedException.class);
+            verifyNoInteractions(stripeProvider, paymentMapper);
+            verify(paymentRepository, never()).save(any(Payment.class));
+        }
+
+        @Test
+        @DisplayName("Should refuse a PAID payment of another user instead of revealing it is paid")
+        void createSingleLessonPayment_paidPaymentOfAnotherUser_throwsAccessDenied() {
+            // GIVEN
+            Payment existing = providePayment(PaymentStatus.PAID);
+            when(paymentRepository.findByBookingId(BOOKING_ID)).thenReturn(Optional.of(existing));
+
+            // WHEN / THEN
+            assertThatThrownBy(
+                    () -> paymentService.createSingleLessonPayment(UUID.randomUUID(), BOOKING_ID))
+                    .isInstanceOf(PaymentAccessDeniedException.class);
+            verifyNoInteractions(stripeProvider);
+        }
+
+        @Test
+        @DisplayName("Should not let another user take over a FAILED payment")
+        void createSingleLessonPayment_failedPaymentOfAnotherUser_throwsAccessDenied() {
+            // GIVEN
+            Payment existing = providePayment(PaymentStatus.FAILED);
+            when(paymentRepository.findByBookingId(BOOKING_ID)).thenReturn(Optional.of(existing));
+
+            // WHEN / THEN
+            assertThatThrownBy(
+                    () -> paymentService.createSingleLessonPayment(UUID.randomUUID(), BOOKING_ID))
+                    .isInstanceOf(PaymentAccessDeniedException.class);
+            verifyNoInteractions(stripeProvider);
+            verify(paymentRepository, never()).save(any(Payment.class));
+        }
+
+        @Test
         @DisplayName("Should throw PaymentException when the booking is already paid")
         void createSingleLessonPayment_existingPaid_throwsPaymentException() {
             // GIVEN
@@ -242,7 +287,8 @@ public class PaymentServiceImplTest {
             PaymentResponseDto expected = providePaymentResponse();
             when(paymentRepository.findPaymentBySessionId(SESSION_ID))
                     .thenReturn(Optional.of(payment));
-            when(stripeProvider.getSession(SESSION_ID)).thenReturn(provideSession("paid"));
+            when(stripeProvider.getSession(SESSION_ID))
+                    .thenReturn(provideSession("paid"));
             when(paymentRepository.save(payment)).thenReturn(payment);
             when(paymentMapper.toDto(payment)).thenReturn(expected);
 
@@ -256,8 +302,8 @@ public class PaymentServiceImplTest {
         }
 
         @Test
-        @DisplayName("Should be idempotent: an already PAID payment "
-                + "is returned without Stripe or outbox")
+        @DisplayName("Should be idempotent: "
+                + "an already PAID payment is returned without Stripe or outbox")
         void fulfillPayment_alreadyPaid_doesNothing() {
             // GIVEN
             Payment payment = providePayment(PaymentStatus.PAID);
@@ -279,7 +325,8 @@ public class PaymentServiceImplTest {
         @DisplayName("Should throw EntityNotFoundException when the session is unknown locally")
         void fulfillPayment_unknownSession_throwsEntityNotFoundException() {
             // GIVEN
-            when(paymentRepository.findPaymentBySessionId(SESSION_ID)).thenReturn(Optional.empty());
+            when(paymentRepository.findPaymentBySessionId(SESSION_ID))
+                    .thenReturn(Optional.empty());
 
             // WHEN / THEN
             assertThatThrownBy(() -> paymentService.fulfillPayment(SESSION_ID))
@@ -305,8 +352,8 @@ public class PaymentServiceImplTest {
         }
 
         @Test
-        @DisplayName("Should throw PaymentException and keep PENDING "
-                + "when Stripe says it is not paid")
+        @DisplayName("Should throw PaymentException "
+                + "and keep PENDING when Stripe says it is not paid")
         void fulfillPayment_notPaidInStripe_throwsPaymentException() {
             // GIVEN
             Payment payment = providePayment(PaymentStatus.PENDING);
@@ -415,8 +462,8 @@ public class PaymentServiceImplTest {
         }
 
         @Test
-        @DisplayName("Should ignore a webhook for a session "
-                + "unknown locally so Stripe stops retrying")
+        @DisplayName("Should ignore a webhook for a session unknown locally "
+                + "so Stripe stops retrying")
         void processWebhook_unknownLocalSession_isIgnored() throws Exception {
             // GIVEN
             Session session = provideSession("paid");
@@ -425,7 +472,8 @@ public class PaymentServiceImplTest {
             when(event.getDataObjectDeserializer()).thenReturn(deserializer);
             when(deserializer.getObject()).thenReturn(Optional.of(session));
             when(stripeProvider.getWebhookEvent(PAYLOAD, SIGNATURE)).thenReturn(event);
-            when(paymentRepository.findPaymentBySessionId(SESSION_ID)).thenReturn(Optional.empty());
+            when(paymentRepository.findPaymentBySessionId(SESSION_ID))
+                    .thenReturn(Optional.empty());
 
             // WHEN / THEN
             assertThatCode(() -> paymentService.processWebhook(PAYLOAD, SIGNATURE))

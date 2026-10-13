@@ -7,6 +7,7 @@ import com.stripe.model.checkout.Session;
 import io.github.senjar.paymentservice.dto.PaymentResponseDto;
 import io.github.senjar.paymentservice.event.PaymentConfirmedEvent;
 import io.github.senjar.paymentservice.exception.InvalidWebhookException;
+import io.github.senjar.paymentservice.exception.PaymentAccessDeniedException;
 import io.github.senjar.paymentservice.exception.PaymentAlreadyPaidException;
 import io.github.senjar.paymentservice.exception.PaymentNotPaidException;
 import io.github.senjar.paymentservice.exception.StripeSessionException;
@@ -51,6 +52,11 @@ public class PaymentServiceImpl implements PaymentService {
 
         if (existing.isPresent()) {
             Payment payment = existing.get();
+
+            if (!payment.getUserId().equals(userId)) {
+                throw new PaymentAccessDeniedException(
+                        "Payment for booking with id: " + bookingId + " belongs to another user");
+            }
 
             if (payment.getStatus() == PaymentStatus.PAID) {
                 throw new PaymentAlreadyPaidException("Payment for booking with id: "
@@ -108,7 +114,6 @@ public class PaymentServiceImpl implements PaymentService {
 
         payment.setStatus(PaymentStatus.PAID);
         Payment savedPayment = paymentRepository.save(payment);
-
         savePaymentConfirmedOutbox(savedPayment.getBookingId());
 
         return paymentMapper.toDto(savedPayment);
