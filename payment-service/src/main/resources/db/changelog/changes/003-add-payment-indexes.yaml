@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-add-payments-user-index
+      author: senjar
+      changes:
+        - createIndex:
+            indexName: idx_payments_user_id
+            tableName: payments
+            columns:
+              - column:
+                  name: user_id
+
+  - changeSet:
+      id: 003-add-outbox-pending-index
+      author: senjar
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: "CREATE INDEX idx_outboxes_pending ON outboxes (id) WHERE processed = false"
+      rollback:
+        - sql:
+            sql: "DROP INDEX idx_outboxes_pending"

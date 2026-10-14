@@ -1,0 +1,75 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-payments-table
+      author: senjar
+      changes:
+        - createTable:
+            tableName: payments
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_payments
+              - column:
+                  name: status
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payment_type
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: booking_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: session_url
+                  type: VARCHAR(1000)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: session_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount
+                  type: NUMERIC(38, 2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 001-add-payments-unique-constraints
+      author: senjar
+      changes:
+        - addUniqueConstraint:
+            tableName: payments
+            columnNames: booking_id
+            constraintName: uq_payments_booking_id
+        - addUniqueConstraint:
+            tableName: payments
+            columnNames: session_id
+            constraintName: uq_payments_session_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: payments
+            constraintName: uq_payments_session_id
+        - dropUniqueConstraint:
+            tableName: payments
+            constraintName: uq_payments_booking_id

@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/changes/001-create-payments-table.yaml
+  - include:
+      file: db/changelog/changes/002-create-outboxes-table.yaml
+  - include:
+      file: db/changelog/changes/003-add-payment-indexes.yaml

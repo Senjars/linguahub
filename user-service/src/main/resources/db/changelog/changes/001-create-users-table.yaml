@@ -1,0 +1,82 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-users-table
+      author: senjar
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_users
+              - column:
+                  name: keycloak_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: username
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: first_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: role
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 001-add-users-constraints
+      author: senjar
+      changes:
+        - addUniqueConstraint:
+            tableName: users
+            columnNames: keycloak_id
+            constraintName: uq_users_keycloak_id
+        - addUniqueConstraint:
+            tableName: users
+            columnNames: username
+            constraintName: uq_users_username
+        - addUniqueConstraint:
+            tableName: users
+            columnNames: email
+            constraintName: uq_users_email
+        - sql:
+            dbms: postgresql
+            sql: "ALTER TABLE users ADD CONSTRAINT chk_users_role CHECK (role IN ('STUDENT', 'TEACHER'))"
+      rollback:
+        - sql:
+            sql: "ALTER TABLE users DROP CONSTRAINT chk_users_role"
+        - dropUniqueConstraint:
+            tableName: users
+            constraintName: uq_users_email
+        - dropUniqueConstraint:
+            tableName: users
+            constraintName: uq_users_username
+        - dropUniqueConstraint:
+            tableName: users
+            constraintName: uq_users_keycloak_id
