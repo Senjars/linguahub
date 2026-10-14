@@ -1,0 +1,39 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-add-booking-lookup-indexes
+      author: senjar
+      changes:
+        - createIndex:
+            indexName: idx_bookings_student_id
+            tableName: bookings
+            columns:
+              - column:
+                  name: student_id
+        - createIndex:
+            indexName: idx_bookings_slot_id
+            tableName: bookings
+            columns:
+              - column:
+                  name: slot_id
+
+  - changeSet:
+      id: 004-add-active-booking-unique-index
+      author: senjar
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: "CREATE UNIQUE INDEX uq_bookings_active_student_slot ON bookings (student_id, slot_id) WHERE status IN ('PENDING', 'CONFIRMED')"
+      rollback:
+        - sql:
+            sql: "DROP INDEX uq_bookings_active_student_slot"
+
+  - changeSet:
+      id: 004-add-outbox-pending-index
+      author: senjar
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: "CREATE INDEX idx_outboxes_pending ON outboxes (id) WHERE processed = false"
+      rollback:
+        - sql:
+            sql: "DROP INDEX idx_outboxes_pending"
