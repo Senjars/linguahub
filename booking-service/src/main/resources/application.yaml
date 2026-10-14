@@ -41,18 +41,8 @@ spring:
     circuitbreaker:
       resilience4j:
         disable-time-limiter: true
-resilience4j:
-  circuitbreaker:
-    configs:
-      default:
-        sliding-window-type: COUNT_BASED
-        sliding-window-size: 10
-        minimum-number-of-calls: 5
-        failure-rate-threshold: 50
-        wait-duration-in-open-state: 15s
-        permitted-number-of-calls-in-half-open-state: 3
         ignore-exceptions:
-          - feign.FeignException$FeignClientException
+          - feign.FeignException.FeignClientException
 eureka:
   client:
     service-url:
